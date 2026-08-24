@@ -1270,8 +1270,8 @@ function deleteRecord(id) {
 // ── Acompanhamento (Tracking) ──
 function renderAcompanhamento() {
   const emp = document.getElementById('acompEmpreendimento').value;
-  const quadra = document.getElementById('acompQuadra').value.trim().toLowerCase();
-  const lote = document.getElementById('acompLote').value.trim().toLowerCase();
+  const quadraFiltro = document.getElementById('acompQuadra').value.trim().toLowerCase();
+  const loteFiltro = document.getElementById('acompLote').value.trim().toLowerCase();
   const container = document.getElementById('acompList');
 
   if (!emp) {
@@ -1284,8 +1284,8 @@ function renderAcompanhamento() {
 
   let filtered = registros.filter(r => {
     if (r.empreendimento !== emp) return false;
-    if (quadra && r.quadra.toLowerCase() !== quadra) return false;
-    if (lote && r.lote.toLowerCase() !== lote) return false;
+    if (quadraFiltro && r.quadra.toLowerCase() !== quadraFiltro) return false;
+    if (loteFiltro && r.lote.toLowerCase() !== loteFiltro) return false;
     return true;
   });
 
@@ -1297,6 +1297,10 @@ function renderAcompanhamento() {
     return;
   }
 
+  const statusMap = { conforme: 'Conforme', atencao: 'Atenção', critico: 'Crítico' };
+  const badgeMap = { conforme: 'badge-success', atencao: 'badge-warning', critico: 'badge-danger' };
+
+  // Agrupar por pacote
   const byPacote = {};
   filtered.forEach(r => {
     if (!byPacote[r.pacote]) byPacote[r.pacote] = [];
@@ -1310,61 +1314,94 @@ function renderAcompanhamento() {
 
   let html = '';
   sortedPacotes.forEach(pacote => {
-    const recs = byPacote[pacote].sort((a, b) => a.data.localeCompare(b.data));
-    const latest = recs[recs.length - 1];
-    const previous = recs.length > 1 ? recs[recs.length - 2] : null;
+    const recsAll = byPacote[pacote];
 
-    const statusMap = { conforme: 'Conforme', atencao: 'Atenção', critico: 'Crítico' };
-    const badgeMap = { conforme: 'badge-success', atencao: 'badge-warning', critico: 'badge-danger' };
+    // Dentro de cada pacote, agrupar por casa (quadra+lote)
+    const byCasa = {};
+    recsAll.forEach(r => {
+      const key = `Q${r.quadra}-L${r.lote}`;
+      if (!byCasa[key]) byCasa[key] = { quadra: r.quadra, lote: r.lote, registros: [] };
+      byCasa[key].registros.push(r);
+    });
 
-    let evolucao = '';
-    if (previous && latest.situacao && previous.situacao) {
-      const order = { critico: 0, atencao: 1, conforme: 2 };
-      const diff = (order[latest.situacao] || 0) - (order[previous.situacao] || 0);
-      if (diff > 0) evolucao = '<span class="badge badge-success">&#8593; Melhorou</span>';
-      else if (diff < 0) evolucao = '<span class="badge badge-danger">&#8595; Piorou</span>';
-      else evolucao = '<span class="badge badge-info">&#8596; Manteve</span>';
-    }
+    const casas = Object.values(byCasa).sort((a, b) => {
+      const qa = parseInt(a.quadra) || 0, qb = parseInt(b.quadra) || 0;
+      if (qa !== qb) return qa - qb;
+      return (parseInt(a.lote) || 0) - (parseInt(b.lote) || 0);
+    });
+
+    // Contagem de status do pacote
+    const statusCount = { conforme: 0, atencao: 0, critico: 0 };
+    casas.forEach(casa => {
+      const sorted = casa.registros.sort((a, b) => b.data.localeCompare(a.data));
+      const ultimo = sorted[0];
+      if (ultimo.situacao && statusCount.hasOwnProperty(ultimo.situacao)) {
+        statusCount[ultimo.situacao]++;
+      }
+    });
 
     html += `<div class="card">
       <div class="card-title" style="justify-content: space-between; flex-wrap: wrap;">
         <span>${pacote}</span>
-        <div style="display:flex; gap:8px; align-items:center;">
-          ${latest.situacao ? `<span class="badge ${badgeMap[latest.situacao] || 'badge-info'}">${statusMap[latest.situacao] || '—'}</span>` : ''}
-          ${evolucao}
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          ${statusCount.conforme > 0 ? `<span class="badge badge-success">${statusCount.conforme} Conforme</span>` : ''}
+          ${statusCount.atencao > 0 ? `<span class="badge badge-warning">${statusCount.atencao} Atenção</span>` : ''}
+          ${statusCount.critico > 0 ? `<span class="badge badge-danger">${statusCount.critico} Crítico</span>` : ''}
         </div>
       </div>
-      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">
-        ${recs.length} registro(s) · Último: ${formatDate(latest.data)}
-        ${quadra || lote ? ` · Quadra ${latest.quadra}, Lote ${latest.lote}` : ''}
-      </div>`;
+      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
+        ${casas.length} casa(s) · ${recsAll.length} registro(s) total
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">`;
 
-    if (latest.descricao) {
-      html += `<div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(latest.descricao)}</div>`;
-    }
-    if (latest.planoAcao) {
-      html += `<div class="action-plan"><div class="action-plan-label">Plano de Ação Atual</div>${escapeHtml(latest.planoAcao)}</div>`;
-    }
+    casas.forEach(casa => {
+      const sorted = casa.registros.sort((a, b) => b.data.localeCompare(a.data));
+      const ultimo = sorted[0];
+      const bClass = badgeMap[ultimo.situacao] || 'badge-info';
+      const statusLabel = statusMap[ultimo.situacao] || '—';
 
-    if (recs.length > 1) {
-      html += `<details style="margin-top:12px;"><summary style="cursor:pointer; font-size:13px; font-weight:500; color:var(--primary);">Ver evolução (${recs.length} registros)</summary>
-      <div style="margin-top:10px; border-left:3px solid var(--primary); padding-left:16px;">`;
-      recs.slice().reverse().forEach(r => {
-        const bClass = badgeMap[r.situacao] || 'badge-info';
-        html += `<div style="margin-bottom:14px; position:relative;">
-          <div style="position:absolute; left:-22px; top:4px; width:10px; height:10px; border-radius:50%; background: var(--primary); border:2px solid var(--surface);"></div>
-          <div style="font-size:13px; font-weight:500;">${formatDate(r.data)}
-            ${r.situacao ? `<span class="badge ${bClass}" style="margin-left:6px;">${statusMap[r.situacao] || '—'}</span>` : ''}
-          </div>
-          ${r.descricao ? `<div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">${escapeHtml(r.descricao).substring(0, 150)}${r.descricao.length > 150 ? '...' : ''}</div>` : ''}
+      html += `<div style="border:1px solid var(--border-light); border-radius:8px; padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+          <strong style="font-size:14px;">Quadra ${casa.quadra}, Lote ${casa.lote}</strong>
+          <span class="badge ${bClass}">${statusLabel}</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+          Último: ${formatDate(ultimo.data)} · ${sorted.length} registro(s)
         </div>`;
-      });
-      html += `</div></details>`;
-    }
 
-    html += `<div class="btn-group" style="margin-top:10px;">
-      <button class="btn btn-outline btn-sm" onclick="gerarPDF('${latest.id}')">PDF do último registro</button>
-    </div></div>`;
+      if (ultimo.descricao) {
+        html += `<div style="font-size:13px; margin-top:6px; color:var(--text-secondary); white-space:pre-wrap;">${escapeHtml(ultimo.descricao).substring(0, 200)}${ultimo.descricao.length > 200 ? '...' : ''}</div>`;
+      }
+      if (ultimo.planoAcao) {
+        html += `<div class="action-plan" style="margin-top:6px;"><div class="action-plan-label">Plano de Ação</div>${escapeHtml(ultimo.planoAcao).substring(0, 200)}${ultimo.planoAcao.length > 200 ? '...' : ''}</div>`;
+      }
+
+      if (sorted.length > 1) {
+        html += `<details style="margin-top:8px;"><summary style="cursor:pointer; font-size:12px; font-weight:500; color:var(--primary);">Histórico (${sorted.length} registros)</summary>
+        <div style="margin-top:8px; border-left:3px solid var(--primary); padding-left:12px;">`;
+        sorted.forEach(r => {
+          const bc = badgeMap[r.situacao] || 'badge-info';
+          html += `<div style="margin-bottom:10px;">
+            <div style="font-size:12px; font-weight:500;">${formatDate(r.data)}
+              ${r.situacao ? `<span class="badge ${bc}" style="margin-left:4px; font-size:10px;">${statusMap[r.situacao] || '—'}</span>` : ''}
+            </div>
+            ${r.descricao ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">${escapeHtml(r.descricao).substring(0, 120)}${r.descricao.length > 120 ? '...' : ''}</div>` : ''}
+          </div>`;
+        });
+        html += `</div></details>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `</div>
+      <div class="btn-group" style="margin-top:10px;">
+        <button class="btn btn-primary btn-sm" onclick="gerarPDFPacote('${escapeHtml(emp)}','${escapeHtml(pacote)}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          PDF Completo — ${pacote}
+        </button>
+      </div>
+    </div>`;
   });
 
   container.innerHTML = html;
@@ -1545,6 +1582,286 @@ function gerarPDF(id) {
   const filename = 'Acompanhamento_' + r.empreendimento.replace(/\s/g,'_') + '_Q' + r.quadra + '_L' + r.lote + '_' + r.data + '.pdf';
   doc.save(filename);
   showToast('PDF gerado: ' + filename);
+}
+
+// ── PDF Completo por Pacote ──
+function gerarPDFPacote(empreendimento, pacote) {
+  const filtered = registros.filter(r => r.empreendimento === empreendimento && r.pacote === pacote);
+  if (filtered.length === 0) { showToast('Nenhum registro encontrado para este pacote.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  const statusLabels = { conforme: 'CONFORME', atencao: 'ATENÇÃO', critico: 'CRÍTICO' };
+  const statusColors = { conforme: [46,125,50], atencao: [239,108,0], critico: [198,40,40] };
+
+  const logoB64 = 'data:image/png;base64,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';
+
+  // ── Helper: check page space, add page if needed ──
+  function checkPage(needed) {
+    if (y + needed > pageH - 20) { doc.addPage(); y = margin; return true; }
+    return false;
+  }
+
+  // ── Helper: render header on each new page ──
+  function renderHeader() {
+    doc.setFillColor(165, 28, 28);
+    doc.rect(0, 0, pageW, 2, 'F');
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 2, pageW, 24, 'F');
+    try { doc.addImage(logoB64, 'PNG', margin, 4, 38, 18); } catch(e) {}
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(165, 28, 28);
+    doc.text('Acompanhamento de Obras', pageW - margin, 16, { align: 'right' });
+    doc.setDrawColor(165, 28, 28);
+    doc.setLineWidth(0.5);
+    doc.line(0, 26, pageW, 26);
+  }
+
+  // ── Helper: add labeled field ──
+  function addField(label, value, x, yPos) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(130, 130, 130);
+    doc.setFontSize(8);
+    doc.text(label.toUpperCase(), x, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.text(String(value || '—'), x, yPos + 5.5);
+  }
+
+  // ── Helper: render text section (descrição / plano) ──
+  function renderSection(title, text, accentColor) {
+    const textInset = 8;
+    const textW = contentW - textInset - 4;
+    const lines = doc.splitTextToSize(text, textW);
+    const titleH = 7;
+    const textLineH = 5;
+    const padding = 5;
+    const boxH = titleH + lines.length * textLineH + padding * 2;
+
+    checkPage(boxH);
+
+    doc.setFillColor(250, 248, 248);
+    doc.roundedRect(margin, y, contentW, boxH, 1.5, 1.5, 'F');
+    doc.setFillColor(...accentColor);
+    doc.roundedRect(margin, y, 2.5, boxH, 1.5, 0, 'F');
+    doc.rect(margin + 1.2, y, 1.3, boxH, 'F');
+
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...accentColor);
+    doc.text(title, margin + textInset, y + padding + 3);
+
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(10);
+    lines.forEach((line, i) => {
+      const ly = y + padding + titleH + i * textLineH + 2;
+      doc.text(line, margin + textInset, ly);
+    });
+
+    y += boxH + 4;
+  }
+
+  // ── Group records by casa (quadra+lote) ──
+  const casas = {};
+  filtered.forEach(r => {
+    const key = r.quadra + '|' + r.lote;
+    if (!casas[key]) casas[key] = [];
+    casas[key].push(r);
+  });
+
+  // Sort each casa's records by date descending
+  Object.values(casas).forEach(arr => arr.sort((a, b) => (b.data || '').localeCompare(a.data || '')));
+
+  // Sort casa keys by quadra then lote
+  const casaKeys = Object.keys(casas).sort((a, b) => {
+    const [qa, la] = a.split('|');
+    const [qb, lb] = b.split('|');
+    return qa.localeCompare(qb, undefined, {numeric: true}) || la.localeCompare(lb, undefined, {numeric: true});
+  });
+
+  // ── COVER PAGE ──
+  renderHeader();
+  y = 45;
+
+  doc.setFontSize(18);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(165, 28, 28);
+  doc.text('Relatório Completo', margin, y);
+  y += 10;
+
+  doc.setFontSize(13);
+  doc.setTextColor(40, 40, 40);
+  doc.text(empreendimento, margin, y);
+  y += 8;
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(80, 80, 80);
+  doc.text('Pacote: ' + pacote, margin, y);
+  y += 12;
+
+  // Summary counts
+  const totalRegs = filtered.length;
+  const totalCasas = casaKeys.length;
+  let countConf = 0, countAt = 0, countCrit = 0;
+  casaKeys.forEach(k => {
+    const ultimo = casas[k][0];
+    if (ultimo.situacao === 'conforme') countConf++;
+    else if (ultimo.situacao === 'atencao') countAt++;
+    else if (ultimo.situacao === 'critico') countCrit++;
+  });
+
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Total de casas: ' + totalCasas + '    |    Total de registros: ' + totalRegs, margin, y);
+  y += 7;
+
+  // Status summary badges
+  function drawBadge(label, count, color, x, yPos) {
+    if (count === 0) return;
+    doc.setFillColor(...color);
+    doc.roundedRect(x, yPos, 38, 7, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.text(label + ': ' + count, x + 19, yPos + 5, { align: 'center' });
+  }
+
+  let bx = margin;
+  if (countConf > 0) { drawBadge('CONFORME', countConf, [46,125,50], bx, y); bx += 42; }
+  if (countAt > 0) { drawBadge('ATENÇÃO', countAt, [239,108,0], bx, y); bx += 42; }
+  if (countCrit > 0) { drawBadge('CRÍTICO', countCrit, [198,40,40], bx, y); }
+  y += 14;
+
+  doc.setFontSize(8);
+  doc.setTextColor(160, 160, 160);
+  doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), margin, y);
+
+  // ── DETAIL PAGES — one section per casa ──
+  casaKeys.forEach((casaKey, casaIdx) => {
+    const [quadra, lote] = casaKey.split('|');
+    const recs = casas[casaKey];
+
+    // New page for each casa
+    doc.addPage();
+    renderHeader();
+    y = 33;
+
+    // Casa header
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(165, 28, 28);
+    doc.text('Quadra ' + quadra + ' — Lote ' + lote, margin, y);
+    y += 5;
+
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(empreendimento + '  ·  ' + pacote + '  ·  ' + recs.length + ' registro(s)', margin, y);
+    y += 8;
+
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, pageW - margin, y);
+    y += 6;
+
+    // Each record for this casa
+    recs.forEach((r, rIdx) => {
+      checkPage(40);
+
+      // Record number + date + status
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Registro ' + (rIdx + 1) + '  —  ' + formatDate(r.data), margin, y);
+
+      if (r.situacao) {
+        const sc = statusColors[r.situacao] || [100,100,100];
+        const sl = statusLabels[r.situacao] || '—';
+        const labelW = doc.getTextWidth(sl) + 6;
+        const bx2 = margin + doc.getTextWidth('Registro ' + (rIdx + 1) + '  —  ' + formatDate(r.data)) + 6;
+        doc.setFillColor(...sc);
+        doc.roundedRect(bx2, y - 4.5, labelW, 6.5, 1.5, 1.5, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'bold');
+        doc.text(sl, bx2 + labelW / 2, y - 0.5, { align: 'center' });
+      }
+
+      y += 8;
+
+      // Description
+      if (r.descricao) {
+        renderSection('DESCRIÇÃO', r.descricao, [100, 100, 100]);
+      }
+
+      // Plano de Ação
+      if (r.planoAcao) {
+        renderSection('PLANO DE AÇÃO', r.planoAcao, [165, 28, 28]);
+      }
+
+      // Photos
+      const fotos = r.fotos || [];
+      if (fotos.length > 0) {
+        checkPage(30);
+        doc.setTextColor(130, 130, 130);
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.text('REGISTRO FOTOGRÁFICO', margin, y);
+        y += 6;
+
+        const photoW = (contentW - 6) / 2;
+        const photoH = 55;
+        let px = margin;
+        fotos.forEach((foto, fi) => {
+          if (y + photoH > pageH - 20) { doc.addPage(); renderHeader(); y = 33; px = margin; }
+          try { doc.addImage(foto, 'JPEG', px, y, photoW, photoH); } catch(e) {}
+          if (fi % 2 === 0) { px = margin + photoW + 6; }
+          else { px = margin; y += photoH + 6; }
+        });
+        if (fotos.length % 2 !== 0) y += photoH + 6;
+      }
+
+      // Separator between records
+      if (rIdx < recs.length - 1) {
+        y += 4;
+        checkPage(6);
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.setLineDashPattern([2, 2], 0);
+        doc.line(margin + 10, y, pageW - margin - 10, y);
+        doc.setLineDashPattern([], 0);
+        y += 8;
+      }
+    });
+  });
+
+  // ── Footer on all pages ──
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(165, 28, 28);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text('FGR Incorporações — Acompanhamento de Obras', margin, pageH - 9);
+    doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Página ' + i + '/' + totalPages, pageW - margin, pageH - 9, { align: 'right' });
+  }
+
+  const filename = 'Acompanhamento_' + empreendimento.replace(/\s/g,'_') + '_' + pacote.replace(/\s/g,'_') + '_Completo.pdf';
+  doc.save(filename);
+  showToast('PDF completo gerado: ' + filename);
 }
 
 // ── Export / Import ──
