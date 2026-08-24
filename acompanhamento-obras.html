@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="FGR Incorporações - Acompanhamento de Obras">
+<title>FGR Acompanhamento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --primary: #A51C1C;
+  --primary-light: #fdf2f2;
+  --primary-dark: #861616;
+  --primary-subtle: #f9e0e0;
+  --accent: #6b6b6b;
+  --surface: #ffffff;
+  --surface-alt: #f5f5f5;
+  --border: #e0e0e0;
+  --border-light: #eeeeee;
+  --text: #2d2d2d;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --success: #2e7d32;
+  --success-bg: #e8f5e9;
+  --warning: #ef6c00;
+  --warning-bg: #fff3e0;
+  --danger: #c62828;
+  --danger-bg: #ffebee;
+  --radius: 8px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #D04040;
+    --primary-light: #3a1a1a;
+    --primary-dark: #E05555;
+    --primary-subtle: #4a2020;
+    --accent: #a0a0a0;
+    --surface: #1e1e1e;
+    --surface-alt: #161616;
+    --border: #333333;
+    --border-light: #2a2a2a;
+    --text: #e8e8e8;
+    --text-secondary: #aaaaaa;
+    --text-muted: #777777;
+    --success: #4caf50;
+    --success-bg: #1a2e1a;
+    --warning: #ff9800;
+    --warning-bg: #2e2210;
+    --danger: #ef5350;
+    --danger-bg: #2e1515;
+    --shadow: 0 1px 4px rgba(0,0,0,0.2);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #D04040;
+  --primary-light: #3a1a1a;
+  --primary-dark: #E05555;
+  --primary-subtle: #4a2020;
+  --accent: #a0a0a0;
+  --surface: #1e1e1e;
+  --surface-alt: #161616;
+  --border: #333333;
+  --border-light: #2a2a2a;
+  --text: #e8e8e8;
+  --text-secondary: #aaaaaa;
+  --text-muted: #777777;
+  --success: #4caf50;
+  --success-bg: #1a2e1a;
+  --warning: #ff9800;
+  --warning-bg: #2e2210;
+  --danger: #ef5350;
+  --danger-bg: #2e1515;
+  --shadow: 0 1px 4px rgba(0,0,0,0.2);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--surface-alt);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Top bar */
+.topbar {
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 3px solid var(--primary);
+  height: 64px;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topbar-logo { height: 38px; width: auto; }
+.topbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.topbar-title h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.topbar-title span {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.topbar-actions { display: flex; gap: 8px; }
+.topbar-btn {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.topbar-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* Saved indicator */
+.save-indicator {
+  font-size: 11px;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.save-indicator.show { opacity: 1; }
+
+/* Navigation tabs */
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  overflow-x: auto;
+}
+.tab {
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Layout */
+.container { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.card-title svg { flex-shrink: 0; color: var(--primary); }
+
+/* Form */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.form-control {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color 0.15s;
+  width: 100%;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(165,28,28,0.08);
+}
+select.form-control { cursor: pointer; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+/* Photo zone */
+.photo-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.photo-zone:hover, .photo-zone.drag-over {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.photo-zone-icon { font-size: 32px; margin-bottom: 8px; color: var(--text-muted); }
+.photo-zone-text { font-size: 14px; color: var(--text-secondary); }
+.photo-zone-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.photo-btns { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.photo-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.photo-btn:hover { border-color: var(--primary); color: var(--primary); }
+.photo-btn.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.photo-btn.primary:hover { background: var(--primary-dark); }
+
+/* Photo grid */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #256d29; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #a32020; }
+.btn-outline {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+/* Status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-info { background: var(--primary-light); color: var(--primary); }
+
+/* History cards */
+.history-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  transition: box-shadow 0.15s;
+  border-left: 3px solid var(--primary);
+}
+.history-item:hover { box-shadow: var(--shadow-lg); }
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.history-meta { font-size: 13px; color: var(--text-secondary); }
+.history-meta strong { color: var(--text); }
+.history-desc {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
+.history-photos {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-top: 8px;
+}
+.history-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.history-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* Action plan */
+.action-plan {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.action-plan-label {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 12px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+.empty-state-text { font-size: 15px; }
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: flex-end;
+}
+.filter-bar .form-group { min-width: 160px; flex: 1; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--primary);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* Modal / Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.lightbox.show { display: flex; }
+.lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* Print-friendly */
+@media print {
+  .topbar, .tabs, .btn-group, .photo-remove, .filter-bar,
+  .topbar-actions, .history-actions { display: none !important; }
+  .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .topbar { height: 56px; padding: 0 12px; }
+  .topbar-logo { height: 28px; }
+  .topbar-title h1 { font-size: 14px; }
+  .topbar-title span { font-size: 10px; }
+  .topbar-actions { gap: 4px; }
+  .topbar-btn { padding: 5px 8px; font-size: 11px; }
+  .container { padding: 12px 10px; }
+  .card { padding: 14px; }
+  .photo-btns { flex-direction: column; align-items: stretch; }
+  .filter-bar { flex-direction: column; }
+  .filter-bar .form-group { min-width: unset; }
+  .history-header { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <svg class="topbar-logo" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12,88 L12,52 L42,10 L72,52" fill="none" stroke="#A51C1C" stroke-width="13" stroke-linejoin="miter" stroke-linecap="square"/>
+      <text x="84" y="70" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif" font-size="60" font-weight="900" fill="#9a9a9a" letter-spacing="1">FGR</text>
+      <text x="86" y="90" font-family="Arial,Helvetica,sans-serif" font-size="15.5" font-weight="700" fill="#9a9a9a" letter-spacing="4.5">INCORPORAÇÕES</text>
+    </svg>
+    <div class="topbar-title">
+      <h1>Acompanhamento de Obras</h1>
+      <span>Controle de andamento</span>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span class="save-indicator" id="saveIndicator">Salvo automaticamente</span>
+    <button class="topbar-btn" onclick="exportData()" title="Exportar dados">&#128190; Backup</button>
+    <button class="topbar-btn" onclick="document.getElementById('importInput').click()" title="Importar dados">&#128194; Restaurar</button>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="novo" onclick="switchTab('novo')">Novo Registro</div>
+  <div class="tab" data-tab="historico" onclick="switchTab('historico')">Histórico</div>
+  <div class="tab" data-tab="acompanhamento" onclick="switchTab('acompanhamento')">Acompanhamento</div>
+</div>
+
+<!-- PAGE: New Record -->
+<div class="container">
+<div class="page active" id="page-novo">
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Dados do Registro
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Empreendimento</label>
+        <select class="form-control" id="empreendimento">
+          <option value="">Selecione...</option>
+          <option>Jardins Berlim</option>
+          <option>Jardins Frankfurt</option>
+          <option>Jardins Turim</option>
+          <option>Jardins Zurique</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-control" id="data">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quadra</label>
+        <input type="text" class="form-control" id="quadra" placeholder="Ex: 05">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lote</label>
+        <input type="text" class="form-control" id="lote" placeholder="Ex: 12">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Pacote (Etapa da Obra)</label>
+        <select class="form-control" id="pacote">
+          <option value="">Selecione o pacote...</option>
+          <option>01 - ESTACAS</option>
+          <option>02 - BLOCOS / BALDRAME</option>
+          <option>03 - MURO DE ARRIMO</option>
+          <option>04 - IMPERMEABILIZAÇÃO E DRENAGEM</option>
+          <option>05 - REATERRO</option>
+          <option>06 - INFRAS ENTERRADAS</option>
+          <option>07 - RADIER + DECK + GARAGEM (KIT)</option>
+          <option>08 - ESCADA PRÉ-MOLDADA</option>
+          <option>09 - ALVENARIA INFERIOR</option>
+          <option>10 - LAJE INFERIOR</option>
+          <option>11 - ALVENARIA SUPERIOR</option>
+          <option>12 - LAJE SUPERIOR</option>
+          <option>13 - TALISCA + CONTRAMARCO</option>
+          <option>14 - ALVENARIA DO BARRILETE E PLATIBANDA</option>
+          <option>15 - PRUMADAS</option>
+          <option>16 - CONTRAPISO</option>
+          <option>17 - REBOCO</option>
+          <option>18 - MURO DE DIVISA</option>
+          <option>19 - INSTALAÇÕES ISOMÉTRICAS E AÉREAS</option>
+          <option>20 - CASA DE GÁS</option>
+          <option>21 - COBERTURA</option>
+          <option>22 - ESCADA MARINHEIRO</option>
+          <option>23 - GESSO INTERNO</option>
+          <option>24 - INSTALAÇÕES EXTERNAS</option>
+          <option>25 - RAMPAS</option>
+          <option>26 - CALÇADAS</option>
+          <option>27 - MURO DE FECHAMENTO - TÉRREAS</option>
+          <option>28 - ESTRUTURA FACHADA E GOURMET (KIT)</option>
+          <option>29 - PISCINAS (KIT)</option>
+          <option>30 - PAISAGISMO</option>
+          <option>31 - PRÉ REVESTIMENTO</option>
+          <option>32 - REVESTIMENTO CERÂMICO</option>
+          <option>33 - REVESTIMENTO DE KIT</option>
+          <option>34 - BANCADAS</option>
+          <option>35 - PINTURA 1ª DEMÃO</option>
+          <option>36 - ESQUADRIAS DE ALUMÍNIO</option>
+          <option>37 - ESQUADRIAS DE MADEIRA</option>
+          <option>38 - ACABAMENTOS FINAIS</option>
+          <option>39 - PINTURA FINAL</option>
+          <option>40 - VISTORIA</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Fotos
+    </div>
+    <div class="photo-zone" id="photoZone"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="photo-zone-icon">&#128247;</div>
+      <div class="photo-zone-text">Arraste fotos aqui ou use os botões abaixo</div>
+      <div class="photo-zone-sub">JPG, PNG — acrescente quantas fotos forem necessárias, sem limite</div>
+      <div class="photo-btns">
+        <button class="photo-btn primary" onclick="document.getElementById('cameraInput').click()">
+          &#128248; Câmera
+        </button>
+        <button class="photo-btn" onclick="document.getElementById('fileInput').click()">
+          &#128193; Escolher arquivos
+        </button>
+      </div>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handleFiles(this.files)">
+    <input type="file" id="fileInput" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Descrição e Avaliação
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Situação Atual</label>
+        <select class="form-control" id="situacao">
+          <option value="">Selecione...</option>
+          <option value="conforme">Conforme</option>
+          <option value="atencao">Atenção</option>
+          <option value="critico">Crítico</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Descrição Geral</label>
+        <textarea class="form-control" id="descricao" rows="4" placeholder="Descreva a situação atual da obra neste pacote..."></textarea>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Plano de Ação</label>
+        <textarea class="form-control" id="planoAcao" rows="3" placeholder="Quais ações serão tomadas para resolver pendências ou seguir o cronograma..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-group" style="justify-content: flex-end;">
+    <button class="btn btn-outline" onclick="clearForm()">Limpar</button>
+    <button class="btn btn-primary" onclick="salvarRegistro()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Salvar Registro
+    </button>
+  </div>
+</div>
+
+<!-- PAGE: History -->
+<div class="page" id="page-historico">
+  <div class="card">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Filtros
+    </div>
+    <div class="filter-bar">
+      <div class="form-group">
+        <label class="form-label">Empreendimento</label>
+        <select class="form-control" id="filtroEmpreendimento" onchange="renderHistory()">
+          <option value="">Todos</option>
+          <option>Jardins Berlim</option>
+          <option>Jardins Frankfurt</option>
+          <option>Jardins Turim</option>
+          <option>Jardins Zurique</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quadra</label>
+        <input type="text" class="form-control" id="filtroQuadra" placeholder="Todas" oninput="renderHistory()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lote</label>
+        <input type="text" class="form-control" id="filtroLote" placeholder="Todos" oninput="renderHistory()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pacote</label>
+        <select class="form-control" id="filtroPacote" onchange="renderHistory()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="historyList"></div>
+</div>
+
+<!-- PAGE: Tracking / Comparison -->
+<div class="page" id="page-acompanhamento">
+  <div class="card">
+    <div class="card-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Acompanhamento por Casa
+    </div>
+    <div class="filter-bar">
+      <div class="form-group">
+        <label class="form-label">Empreendimento</label>
+        <select class="form-control" id="acompEmpreendimento" onchange="renderAcompanhamento()">
+          <option value="">Selecione...</option>
+          <option>Jardins Berlim</option>
+          <option>Jardins Frankfurt</option>
+          <option>Jardins Turim</option>
+          <option>Jardins Zurique</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quadra</label>
+        <input type="text" class="form-control" id="acompQuadra" placeholder="Quadra" oninput="renderAcompanhamento()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lote</label>
+        <input type="text" class="form-control" id="acompLote" placeholder="Lote" oninput="renderAcompanhamento()">
+      </div>
+    </div>
+  </div>
+  <div id="acompList"></div>
+</div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lightboxImg" src="">
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Storage helpers (with try/catch for safety) ──
+const STORAGE_KEY = 'fgr_obras_registros';
+
+function saveToStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+    flashSaveIndicator();
+  } catch (e) {
+    console.warn('localStorage save failed:', e);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('localStorage load failed:', e);
+  }
+  return [];
+}
+
+function flashSaveIndicator() {
+  const el = document.getElementById('saveIndicator');
+  if (!el) return;
+  el.classList.add('show');
+  clearTimeout(el._timeout);
+  el._timeout = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ── Data Store ──
+let registros = loadFromStorage();
+let currentPhotos = [];
+let editingId = null;
+
+// Set today's date
+document.getElementById('data').valueAsDate = new Date();
+
+// Populate filter pacote
+(function() {
+  const sel = document.getElementById('filtroPacote');
+  document.querySelectorAll('#pacote option').forEach(o => {
+    if (o.value) {
+      const opt = document.createElement('option');
+      opt.value = o.value;
+      opt.textContent = o.textContent;
+      sel.appendChild(opt);
+    }
+  });
+})();
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + tab));
+  if (tab === 'historico') renderHistory();
+  if (tab === 'acompanhamento') renderAcompanhamento();
+}
+
+// ── Photos ──
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 1200;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = h * MAX / w; w = MAX; }
+          else { w = w * MAX / h; h = MAX; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        currentPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+        renderPhotoGrid();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+}
+
+function renderPhotoGrid() {
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = currentPhotos.map((p, i) =>
+    `<div class="photo-thumb">
+      <img src="${p}" onclick="openLightbox('${p.replace(/'/g, "\\'")}')">
+      <button class="photo-remove" onclick="removePhoto(${i})">&times;</button>
+    </div>`
+  ).join('');
+}
+
+function removePhoto(i) {
+  currentPhotos.splice(i, 1);
+  renderPhotoGrid();
+}
+
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('show');
+}
+
+// ── Save ──
+function salvarRegistro() {
+  const emp = document.getElementById('empreendimento').value;
+  const data = document.getElementById('data').value;
+  const quadra = document.getElementById('quadra').value.trim();
+  const lote = document.getElementById('lote').value.trim();
+  const pacote = document.getElementById('pacote').value;
+  const situacao = document.getElementById('situacao').value;
+  const descricao = document.getElementById('descricao').value.trim();
+  const plano = document.getElementById('planoAcao').value.trim();
+
+  if (!emp || !data || !quadra || !lote || !pacote) {
+    showToast('Preencha todos os campos obrigatórios (empreendimento, data, quadra, lote e pacote).');
+    return;
+  }
+
+  const registro = {
+    id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    empreendimento: emp,
+    data,
+    quadra,
+    lote,
+    pacote,
+    situacao,
+    descricao,
+    planoAcao: plano,
+    fotos: [...currentPhotos],
+    criadoEm: editingId ? registros.find(r => r.id === editingId)?.criadoEm || new Date().toISOString() : new Date().toISOString()
+  };
+
+  if (editingId) {
+    const idx = registros.findIndex(r => r.id === editingId);
+    if (idx >= 0) registros[idx] = registro;
+    editingId = null;
+  } else {
+    registros.push(registro);
+  }
+
+  saveToStorage();
+  clearForm();
+  showToast('Registro salvo com sucesso!');
+}
+
+function clearForm() {
+  document.getElementById('empreendimento').value = '';
+  document.getElementById('data').valueAsDate = new Date();
+  document.getElementById('quadra').value = '';
+  document.getElementById('lote').value = '';
+  document.getElementById('pacote').value = '';
+  document.getElementById('situacao').value = '';
+  document.getElementById('descricao').value = '';
+  document.getElementById('planoAcao').value = '';
+  currentPhotos = [];
+  editingId = null;
+  renderPhotoGrid();
+}
+
+// ── History ──
+function renderHistory() {
+  const emp = document.getElementById('filtroEmpreendimento').value;
+  const quadra = document.getElementById('filtroQuadra').value.trim().toLowerCase();
+  const lote = document.getElementById('filtroLote').value.trim().toLowerCase();
+  const pacote = document.getElementById('filtroPacote').value;
+
+  let filtered = registros.filter(r => {
+    if (emp && r.empreendimento !== emp) return false;
+    if (quadra && r.quadra.toLowerCase() !== quadra) return false;
+    if (lote && r.lote.toLowerCase() !== lote) return false;
+    if (pacote && r.pacote !== pacote) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => b.data.localeCompare(a.data) || b.criadoEm.localeCompare(a.criadoEm));
+
+  const container = document.getElementById('historyList');
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">&#128203;</div>
+      <div class="empty-state-text">Nenhum registro encontrado</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(r => {
+    const badgeClass = r.situacao === 'conforme' ? 'badge-success' :
+                       r.situacao === 'atencao' ? 'badge-warning' :
+                       r.situacao === 'critico' ? 'badge-danger' : 'badge-info';
+    const badgeLabel = r.situacao === 'conforme' ? 'Conforme' :
+                       r.situacao === 'atencao' ? 'Atenção' :
+                       r.situacao === 'critico' ? 'Crítico' : 'Sem status';
+    const badgeIcon = r.situacao === 'conforme' ? '&#10003;' :
+                      r.situacao === 'atencao' ? '&#9888;' :
+                      r.situacao === 'critico' ? '&#10007;' : '&#8212;';
+
+    const dataFormatada = formatDate(r.data);
+
+    return `<div class="history-item">
+      <div class="history-header">
+        <div>
+          <div class="history-meta"><strong>${r.empreendimento}</strong> — Quadra ${r.quadra}, Lote ${r.lote}</div>
+          <div class="history-meta">${dataFormatada} · ${r.pacote}</div>
+        </div>
+        <span class="badge ${badgeClass}">${badgeIcon} ${badgeLabel}</span>
+      </div>
+      ${r.descricao ? `<div class="history-desc">${escapeHtml(r.descricao)}</div>` : ''}
+      ${r.planoAcao ? `<div class="action-plan"><div class="action-plan-label">Plano de Ação</div>${escapeHtml(r.planoAcao)}</div>` : ''}
+      ${r.fotos.length > 0 ? `<div class="history-photos">${r.fotos.map(f => `<img class="history-photo" src="${f}" onclick="openLightbox('${f.replace(/'/g, "\\'")}')">`).join('')}</div>` : ''}
+      <div class="history-actions">
+        <button class="btn btn-outline btn-sm" onclick="editRecord('${r.id}')">Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="gerarPDF('${r.id}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Gerar PDF
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecord('${r.id}')">Excluir</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editRecord(id) {
+  const r = registros.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('empreendimento').value = r.empreendimento;
+  document.getElementById('data').value = r.data;
+  document.getElementById('quadra').value = r.quadra;
+  document.getElementById('lote').value = r.lote;
+  document.getElementById('pacote').value = r.pacote;
+  document.getElementById('situacao').value = r.situacao;
+  document.getElementById('descricao').value = r.descricao;
+  document.getElementById('planoAcao').value = r.planoAcao;
+  currentPhotos = [...r.fotos];
+  renderPhotoGrid();
+  switchTab('novo');
+  showToast('Editando registro. Clique em "Salvar" para confirmar as alterações.');
+}
+
+function deleteRecord(id) {
+  if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+  registros = registros.filter(r => r.id !== id);
+  saveToStorage();
+  renderHistory();
+  showToast('Registro excluído.');
+}
+
+// ── Acompanhamento (Tracking) ──
+function renderAcompanhamento() {
+  const emp = document.getElementById('acompEmpreendimento').value;
+  const quadra = document.getElementById('acompQuadra').value.trim().toLowerCase();
+  const lote = document.getElementById('acompLote').value.trim().toLowerCase();
+  const container = document.getElementById('acompList');
+
+  if (!emp) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">&#128269;</div>
+      <div class="empty-state-text">Selecione um empreendimento para ver o acompanhamento</div>
+    </div>`;
+    return;
+  }
+
+  let filtered = registros.filter(r => {
+    if (r.empreendimento !== emp) return false;
+    if (quadra && r.quadra.toLowerCase() !== quadra) return false;
+    if (lote && r.lote.toLowerCase() !== lote) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">&#128203;</div>
+      <div class="empty-state-text">Nenhum registro encontrado para esta seleção</div>
+    </div>`;
+    return;
+  }
+
+  const byPacote = {};
+  filtered.forEach(r => {
+    if (!byPacote[r.pacote]) byPacote[r.pacote] = [];
+    byPacote[r.pacote].push(r);
+  });
+
+  const sortedPacotes = Object.keys(byPacote).sort((a, b) => {
+    const na = parseInt(a); const nb = parseInt(b);
+    return na - nb;
+  });
+
+  let html = '';
+  sortedPacotes.forEach(pacote => {
+    const recs = byPacote[pacote].sort((a, b) => a.data.localeCompare(b.data));
+    const latest = recs[recs.length - 1];
+    const previous = recs.length > 1 ? recs[recs.length - 2] : null;
+
+    const statusMap = { conforme: 'Conforme', atencao: 'Atenção', critico: 'Crítico' };
+    const badgeMap = { conforme: 'badge-success', atencao: 'badge-warning', critico: 'badge-danger' };
+
+    let evolucao = '';
+    if (previous && latest.situacao && previous.situacao) {
+      const order = { critico: 0, atencao: 1, conforme: 2 };
+      const diff = (order[latest.situacao] || 0) - (order[previous.situacao] || 0);
+      if (diff > 0) evolucao = '<span class="badge badge-success">&#8593; Melhorou</span>';
+      else if (diff < 0) evolucao = '<span class="badge badge-danger">&#8595; Piorou</span>';
+      else evolucao = '<span class="badge badge-info">&#8596; Manteve</span>';
+    }
+
+    html += `<div class="card">
+      <div class="card-title" style="justify-content: space-between; flex-wrap: wrap;">
+        <span>${pacote}</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${latest.situacao ? `<span class="badge ${badgeMap[latest.situacao] || 'badge-info'}">${statusMap[latest.situacao] || '—'}</span>` : ''}
+          ${evolucao}
+        </div>
+      </div>
+      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;">
+        ${recs.length} registro(s) · Último: ${formatDate(latest.data)}
+        ${quadra || lote ? ` · Quadra ${latest.quadra}, Lote ${latest.lote}` : ''}
+      </div>`;
+
+    if (latest.descricao) {
+      html += `<div style="font-size:14px; margin-bottom:8px; white-space:pre-wrap;">${escapeHtml(latest.descricao)}</div>`;
+    }
+    if (latest.planoAcao) {
+      html += `<div class="action-plan"><div class="action-plan-label">Plano de Ação Atual</div>${escapeHtml(latest.planoAcao)}</div>`;
+    }
+
+    if (recs.length > 1) {
+      html += `<details style="margin-top:12px;"><summary style="cursor:pointer; font-size:13px; font-weight:500; color:var(--primary);">Ver evolução (${recs.length} registros)</summary>
+      <div style="margin-top:10px; border-left:3px solid var(--primary); padding-left:16px;">`;
+      recs.slice().reverse().forEach(r => {
+        const bClass = badgeMap[r.situacao] || 'badge-info';
+        html += `<div style="margin-bottom:14px; position:relative;">
+          <div style="position:absolute; left:-22px; top:4px; width:10px; height:10px; border-radius:50%; background: var(--primary); border:2px solid var(--surface);"></div>
+          <div style="font-size:13px; font-weight:500;">${formatDate(r.data)}
+            ${r.situacao ? `<span class="badge ${bClass}" style="margin-left:6px;">${statusMap[r.situacao] || '—'}</span>` : ''}
+          </div>
+          ${r.descricao ? `<div style="font-size:13px; color:var(--text-secondary); margin-top:2px;">${escapeHtml(r.descricao).substring(0, 150)}${r.descricao.length > 150 ? '...' : ''}</div>` : ''}
+        </div>`;
+      });
+      html += `</div></details>`;
+    }
+
+    html += `<div class="btn-group" style="margin-top:10px;">
+      <button class="btn btn-outline btn-sm" onclick="gerarPDF('${latest.id}')">PDF do último registro</button>
+    </div></div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ── PDF Generation ──
+function gerarPDF(id) {
+  const r = registros.find(x => x.id === id);
+  if (!r) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  // Red top accent stripe
+  doc.setFillColor(165, 28, 28);
+  doc.rect(0, 0, pageW, 2, 'F');
+
+  // White header area
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 2, pageW, 24, 'F');
+
+  // FGR Logo
+  const logoB64 = 'data:image/png;base64,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';
+  try {
+    doc.addImage(logoB64, 'PNG', margin, 4, 38, 18);
+  } catch(e) {}
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(165, 28, 28);
+  doc.text('Acompanhamento de Obras', pageW - margin, 16, { align: 'right' });
+
+  doc.setDrawColor(165, 28, 28);
+  doc.setLineWidth(0.5);
+  doc.line(0, 26, pageW, 26);
+
+  y = 33;
+
+  doc.setTextColor(30, 30, 30);
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+
+  function addField(label, value, x, yPos, w) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(130, 130, 130);
+    doc.setFontSize(8);
+    doc.text(label.toUpperCase(), x, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.text(String(value || '—'), x, yPos + 5.5);
+  }
+
+  addField('Empreendimento', r.empreendimento, margin, y);
+  addField('Data', formatDate(r.data), margin + 90, y);
+  y += 15;
+  addField('Casa', `Quadra ${r.quadra} — Lote ${r.lote}`, margin, y);
+  addField('Pacote', r.pacote, margin + 90, y);
+  y += 15;
+
+  const statusLabels = { conforme: 'CONFORME', atencao: 'ATENÇÃO', critico: 'CRÍTICO' };
+  const statusColors = { conforme: [46,125,50], atencao: [239,108,0], critico: [198,40,40] };
+  if (r.situacao) {
+    const color = statusColors[r.situacao] || [100,100,100];
+    doc.setFillColor(...color);
+    doc.roundedRect(margin, y, 34, 7, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.text(statusLabels[r.situacao] || '—', margin + 17, y + 5, { align: 'center' });
+    y += 13;
+  }
+
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageW - margin, y);
+  y += 8;
+
+  const hasDesc = !!r.descricao;
+  const hasPlan = !!r.planoAcao;
+
+  if (hasDesc || hasPlan) {
+    const textInset = 8;
+    const textW = contentW - textInset - 4;
+
+    let descLines = [];
+    let planLines = [];
+    if (hasDesc) descLines = doc.splitTextToSize(r.descricao, textW);
+    if (hasPlan) planLines = doc.splitTextToSize(r.planoAcao, textW);
+
+    function renderSection(title, lines, startY, accentColor) {
+      const titleH = 7;
+      const textLineH = 5;
+      const padding = 5;
+      const boxH = titleH + lines.length * textLineH + padding * 2;
+
+      if (startY + boxH > pageH - 20) { doc.addPage(); startY = margin; }
+
+      doc.setFillColor(250, 248, 248);
+      doc.roundedRect(margin, startY, contentW, boxH, 1.5, 1.5, 'F');
+
+      doc.setFillColor(...accentColor);
+      doc.roundedRect(margin, startY, 2.5, boxH, 1.5, 0, 'F');
+      doc.rect(margin + 1.2, startY, 1.3, boxH, 'F');
+
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(...accentColor);
+      doc.text(title, margin + textInset, startY + padding + 3);
+
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(10);
+      lines.forEach((line, i) => {
+        const ly = startY + padding + titleH + i * textLineH + 2;
+        if (ly > pageH - 15) { doc.addPage(); startY = margin; }
+        doc.text(line, margin + textInset, ly);
+      });
+
+      return startY + boxH;
+    }
+
+    if (hasDesc) {
+      y = renderSection('DESCRIÇÃO GERAL', descLines, y, [100, 100, 100]);
+      y += 4;
+    }
+
+    if (hasPlan) {
+      y = renderSection('PLANO DE AÇÃO', planLines, y, [165, 28, 28]);
+      y += 4;
+    }
+
+    y += 4;
+  }
+
+  if (r.fotos.length > 0) {
+    if (y > pageH - 60) { doc.addPage(); y = margin; }
+    doc.setTextColor(130, 130, 130);
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.text('REGISTRO FOTOGRÁFICO', margin, y);
+    y += 6;
+
+    const photoW = (contentW - 6) / 2;
+    const photoH = 55;
+    let x = margin;
+    r.fotos.forEach((foto, i) => {
+      if (y + photoH > pageH - 12) { doc.addPage(); y = margin; x = margin; }
+      try {
+        doc.addImage(foto, 'JPEG', x, y, photoW, photoH);
+      } catch(e) {}
+      if (i % 2 === 0) { x = margin + photoW + 6; }
+      else { x = margin; y += photoH + 6; }
+    });
+    if (r.fotos.length % 2 !== 0) y += photoH + 6;
+  }
+
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(165, 28, 28);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
+
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text('FGR Incorporações — Acompanhamento de Obras', margin, pageH - 9);
+    doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Página ' + i + '/' + totalPages, pageW - margin, pageH - 9, { align: 'right' });
+  }
+
+  const filename = 'Acompanhamento_' + r.empreendimento.replace(/\s/g,'_') + '_Q' + r.quadra + '_L' + r.lote + '_' + r.data + '.pdf';
+  doc.save(filename);
+  showToast('PDF gerado: ' + filename);
+}
+
+// ── Export / Import ──
+function exportData() {
+  if (registros.length === 0) { showToast('Nenhum registro para exportar.'); return; }
+  const data = JSON.stringify(registros, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'FGR_Obras_Backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Backup exportado com sucesso!');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      const existingIds = new Set(registros.map(r => r.id));
+      let added = 0;
+      data.forEach(r => {
+        if (!existingIds.has(r.id)) {
+          registros.push(r);
+          added++;
+        }
+      });
+      saveToStorage();
+      showToast('Dados restaurados! ' + added + ' novo(s) registro(s) adicionado(s).');
+      renderHistory();
+    } catch (err) {
+      showToast('Erro ao importar. Verifique o formato do arquivo.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ── Utilities ──
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return d + '/' + m + '/' + y;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
