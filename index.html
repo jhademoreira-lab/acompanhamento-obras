@@ -909,13 +909,17 @@ function initFirebase() {
     // Real-time listener — keeps all browsers in sync
     dbRef.on('value', snapshot => {
       const val = snapshot.val();
+      let data = [];
       if (val && Array.isArray(val)) {
-        registros = val;
+        data = val;
       } else if (val && typeof val === 'object') {
-        registros = Object.values(val);
-      } else {
-        registros = [];
+        data = Object.values(val);
       }
+      // Firebase drops empty arrays — restore fotos field
+      registros = data.filter(Boolean).map(r => ({
+        ...r,
+        fotos: r.fotos ? (Array.isArray(r.fotos) ? r.fotos : Object.values(r.fotos)) : []
+      }));
       saveToLocal();
       refreshUI();
       setSyncStatus('Sincronizado');
@@ -1113,8 +1117,24 @@ function salvarRegistro() {
   const descricao = document.getElementById('descricao').value.trim();
   const plano = document.getElementById('planoAcao').value.trim();
 
-  if (!emp || !data || !quadra || !lote || !pacote) {
-    showToast('Preencha todos os campos obrigatórios (empreendimento, data, quadra, lote e pacote).');
+  // Validação — destaca campos obrigatórios vazios
+  const campos = [
+    { id: 'empreendimento', val: emp, nome: 'Empreendimento' },
+    { id: 'data', val: data, nome: 'Data' },
+    { id: 'quadra', val: quadra, nome: 'Quadra' },
+    { id: 'lote', val: lote, nome: 'Lote' },
+    { id: 'pacote', val: pacote, nome: 'Pacote' }
+  ];
+  const faltando = campos.filter(c => !c.val);
+  // Limpa destaques anteriores
+  campos.forEach(c => document.getElementById(c.id).style.border = '');
+  if (faltando.length > 0) {
+    faltando.forEach(c => {
+      document.getElementById(c.id).style.border = '2px solid var(--danger)';
+    });
+    const nomes = faltando.map(c => c.nome).join(', ');
+    showToast('Preencha os campos obrigatórios: ' + nomes);
+    document.getElementById(faltando[0].id).focus();
     return;
   }
 
@@ -1208,7 +1228,7 @@ function renderHistory() {
       </div>
       ${r.descricao ? `<div class="history-desc">${escapeHtml(r.descricao)}</div>` : ''}
       ${r.planoAcao ? `<div class="action-plan"><div class="action-plan-label">Plano de Ação</div>${escapeHtml(r.planoAcao)}</div>` : ''}
-      ${r.fotos.length > 0 ? `<div class="history-photos">${r.fotos.map(f => `<img class="history-photo" src="${f}" onclick="openLightbox('${f.replace(/'/g, "\\'")}')">`).join('')}</div>` : ''}
+      ${(r.fotos && r.fotos.length > 0) ? `<div class="history-photos">${r.fotos.map(f => `<img class="history-photo" src="${f}" onclick="openLightbox('${f.replace(/'/g, "\\'")}')">`).join('')}</div>` : ''}
       <div class="history-actions">
         <button class="btn btn-outline btn-sm" onclick="editRecord('${r.id}')">Editar</button>
         <button class="btn btn-outline btn-sm" onclick="gerarPDF('${r.id}')">
@@ -1233,7 +1253,7 @@ function editRecord(id) {
   document.getElementById('situacao').value = r.situacao;
   document.getElementById('descricao').value = r.descricao;
   document.getElementById('planoAcao').value = r.planoAcao;
-  currentPhotos = [...r.fotos];
+  currentPhotos = [...(r.fotos || [])];
   renderPhotoGrid();
   switchTab('novo');
   showToast('Editando registro. Clique em "Salvar" para confirmar as alterações.');
@@ -1486,7 +1506,8 @@ function gerarPDF(id) {
     y += 4;
   }
 
-  if (r.fotos.length > 0) {
+  const fotos = r.fotos || [];
+  if (fotos.length > 0) {
     if (y > pageH - 60) { doc.addPage(); y = margin; }
     doc.setTextColor(130, 130, 130);
     doc.setFontSize(8);
@@ -1497,7 +1518,7 @@ function gerarPDF(id) {
     const photoW = (contentW - 6) / 2;
     const photoH = 55;
     let x = margin;
-    r.fotos.forEach((foto, i) => {
+    fotos.forEach((foto, i) => {
       if (y + photoH > pageH - 12) { doc.addPage(); y = margin; x = margin; }
       try {
         doc.addImage(foto, 'JPEG', x, y, photoW, photoH);
@@ -1505,7 +1526,7 @@ function gerarPDF(id) {
       if (i % 2 === 0) { x = margin + photoW + 6; }
       else { x = margin; y += photoH + 6; }
     });
-    if (r.fotos.length % 2 !== 0) y += photoH + 6;
+    if (fotos.length % 2 !== 0) y += photoH + 6;
   }
 
   const totalPages = doc.internal.getNumberOfPages();
