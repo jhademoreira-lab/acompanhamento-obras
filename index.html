@@ -6,6 +6,9 @@
 <meta name="description" content="FGR Incorporações - Acompanhamento de Obras">
 <title>FGR Acompanhamento</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 :root {
   --primary: #A51C1C;
@@ -510,9 +513,85 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   .filter-bar .form-group { min-width: unset; }
   .history-header { flex-direction: column; }
 }
+
+/* Setup overlay */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-alt);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.setup-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 540px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+.setup-box h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+.setup-box p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.setup-box textarea {
+  width: 100%;
+  min-height: 140px;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-alt);
+  color: var(--text);
+  resize: vertical;
+}
+.setup-box .btn { margin-top: 12px; }
+.setup-error {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 8px;
+  display: none;
+}
+.sync-indicator {
+  font-size: 11px;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+.sync-indicator.show { opacity: 1; }
+.sync-indicator.offline { color: var(--warning); }
 </style>
 </head>
 <body>
+
+<!-- Login overlay -->
+<div class="setup-overlay" id="loginOverlay">
+  <div class="setup-box" style="text-align:center;">
+    <svg viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg" style="width:160px; margin-bottom:12px;">
+      <path d="M12,88 L12,52 L42,10 L72,52" fill="none" stroke="#A51C1C" stroke-width="13" stroke-linejoin="miter" stroke-linecap="square"/>
+      <text x="84" y="70" font-family="'Arial Black','Helvetica Neue',Arial,sans-serif" font-size="60" font-weight="900" fill="#9a9a9a" letter-spacing="1">FGR</text>
+      <text x="86" y="90" font-family="Arial,Helvetica,sans-serif" font-size="15.5" font-weight="700" fill="#9a9a9a" letter-spacing="4.5">INCORPORAÇÕES</text>
+    </svg>
+    <h2>Acompanhamento de Obras</h2>
+    <p>Digite a senha de acesso para continuar.</p>
+    <input type="password" id="loginSenha" class="form-control" placeholder="Senha de acesso" style="text-align:center; font-size:16px; padding:12px; max-width:300px; margin:0 auto;" onkeydown="if(event.key==='Enter') verificarSenha()">
+    <div class="setup-error" id="loginError">Senha incorreta. Tente novamente.</div>
+    <button class="btn btn-primary" onclick="verificarSenha()" style="margin-top:16px; min-width:200px;">Entrar</button>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="topbar-brand">
@@ -527,6 +606,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     </div>
   </div>
   <div class="topbar-actions">
+    <span class="sync-indicator" id="syncIndicator"></span>
     <span class="save-indicator" id="saveIndicator">Salvo automaticamente</span>
     <button class="topbar-btn" onclick="exportData()" title="Exportar dados">&#128190; Backup</button>
     <button class="topbar-btn" onclick="document.getElementById('importInput').click()" title="Importar dados">&#128194; Restaurar</button>
@@ -760,19 +840,53 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Storage helpers (with try/catch for safety) ──
+// ══════════════════════════════════════════════════════
+//  FIREBASE REALTIME DATABASE INTEGRATION
+//  All users with the link see the same data in real-time.
+//  localStorage is kept as offline fallback.
+// ══════════════════════════════════════════════════════
+
 const STORAGE_KEY = 'fgr_obras_registros';
 
-function saveToStorage() {
+// ── Firebase config (hardcoded — funciona para todos automaticamente) ──
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDeLytX61_4YiA-WIWAUhRlceCmIBnglR0",
+  authDomain: "acompanhamento-obras-9ba72.firebaseapp.com",
+  databaseURL: "https://acompanhamento-obras-9ba72-default-rtdb.firebaseio.com",
+  projectId: "acompanhamento-obras-9ba72",
+  storageBucket: "acompanhamento-obras-9ba72.firebasestorage.app",
+  messagingSenderId: "369046247602",
+  appId: "1:369046247602:web:58db3374c8f494c4f851ab"
+};
+
+// ── Firebase state ──
+let firebaseReady = false;
+let dbRef = null;
+
+// ── Data Store ──
+let registros = [];
+let currentPhotos = [];
+let editingId = null;
+
+// ── Sync indicator ──
+function setSyncStatus(text, isOffline) {
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('offline', !!isOffline);
+  el.classList.add('show');
+}
+
+// ── localStorage helpers (backup offline) ──
+function saveToLocal() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-    flashSaveIndicator();
   } catch (e) {
     console.warn('localStorage save failed:', e);
   }
 }
 
-function loadFromStorage() {
+function loadFromLocal() {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (data) {
@@ -785,6 +899,64 @@ function loadFromStorage() {
   return [];
 }
 
+// ── Firebase initialization (automatic) ──
+function initFirebase() {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.database();
+    dbRef = db.ref('registros');
+
+    // Real-time listener — keeps all browsers in sync
+    dbRef.on('value', snapshot => {
+      const val = snapshot.val();
+      if (val && Array.isArray(val)) {
+        registros = val;
+      } else if (val && typeof val === 'object') {
+        registros = Object.values(val);
+      } else {
+        registros = [];
+      }
+      saveToLocal();
+      refreshUI();
+      setSyncStatus('Sincronizado');
+    });
+
+    // Connection state
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        setSyncStatus('Conectado');
+      } else {
+        setSyncStatus('Offline — dados locais', true);
+      }
+    });
+
+    firebaseReady = true;
+    setSyncStatus('Conectando...');
+  } catch (e) {
+    console.error('Firebase init failed:', e);
+    setSyncStatus('Erro ao conectar', true);
+  }
+}
+
+// ── Save to Firebase (or localStorage fallback) ──
+function saveToStorage() {
+  saveToLocal();
+  if (firebaseReady && dbRef) {
+    dbRef.set(registros)
+      .then(() => {
+        flashSaveIndicator();
+        setSyncStatus('Sincronizado');
+      })
+      .catch(err => {
+        console.warn('Firebase write failed:', err);
+        flashSaveIndicator();
+        setSyncStatus('Erro ao salvar — dados locais', true);
+      });
+  } else {
+    flashSaveIndicator();
+  }
+}
+
 function flashSaveIndicator() {
   const el = document.getElementById('saveIndicator');
   if (!el) return;
@@ -793,16 +965,61 @@ function flashSaveIndicator() {
   el._timeout = setTimeout(() => el.classList.remove('show'), 2000);
 }
 
-// ── Data Store ──
-let registros = loadFromStorage();
-let currentPhotos = [];
-let editingId = null;
+// ── Refresh all visible UI after sync ──
+function refreshUI() {
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    const tab = activeTab.dataset.tab;
+    if (tab === 'historico') renderHistory();
+    if (tab === 'acompanhamento') renderAcompanhamento();
+  }
+}
 
-// Set today's date
-document.getElementById('data').valueAsDate = new Date();
+// ══════════════════════════════════════════════════════
+//  PASSWORD PROTECTION
+// ══════════════════════════════════════════════════════
+const APP_PASSWORD = 'fgr2024';
+const AUTH_KEY = 'fgr_auth';
+let appUnlocked = false;
 
-// Populate filter pacote
-(function() {
+function verificarSenha() {
+  const input = document.getElementById('loginSenha').value;
+  const errEl = document.getElementById('loginError');
+
+  if (input === APP_PASSWORD) {
+    appUnlocked = true;
+    try { sessionStorage.setItem(AUTH_KEY, '1'); } catch(e) {}
+    document.getElementById('loginOverlay').style.display = 'none';
+    errEl.style.display = 'none';
+    startApp();
+  } else {
+    errEl.style.display = 'block';
+    document.getElementById('loginSenha').value = '';
+    document.getElementById('loginSenha').focus();
+  }
+}
+
+function checkAuth() {
+  try {
+    if (sessionStorage.getItem(AUTH_KEY) === '1') return true;
+  } catch(e) {}
+  return false;
+}
+
+// ══════════════════════════════════════════════════════
+//  APP INITIALIZATION
+// ══════════════════════════════════════════════════════
+function startApp() {
+  // Load local data first (available immediately even offline)
+  registros = loadFromLocal();
+
+  // Connect Firebase automatically
+  initFirebase();
+
+  // Set today's date
+  document.getElementById('data').valueAsDate = new Date();
+
+  // Populate filter pacote
   const sel = document.getElementById('filtroPacote');
   document.querySelectorAll('#pacote option').forEach(o => {
     if (o.value) {
@@ -812,6 +1029,17 @@ document.getElementById('data').valueAsDate = new Date();
       sel.appendChild(opt);
     }
   });
+}
+
+// Check if already authenticated in this browser session
+(function init() {
+  if (checkAuth()) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    startApp();
+  } else {
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('loginSenha').focus();
+  }
 })();
 
 // ── Tab switching ──
