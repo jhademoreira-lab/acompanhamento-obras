@@ -1,4 +1,4 @@
-A<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -794,6 +794,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
           <option value="">Todos</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Data De</label>
+        <input type="date" class="form-control" id="filtroDataDe" onchange="renderHistory()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Até</label>
+        <input type="date" class="form-control" id="filtroDataAte" onchange="renderHistory()">
+      </div>
     </div>
   </div>
   <div id="historyList"></div>
@@ -824,6 +832,14 @@ textarea.form-control { resize: vertical; min-height: 80px; }
       <div class="form-group">
         <label class="form-label">Lote</label>
         <input type="text" class="form-control" id="acompLote" placeholder="Lote" oninput="renderAcompanhamento()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data De</label>
+        <input type="date" class="form-control" id="acompDataDe" onchange="renderAcompanhamento()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Até</label>
+        <input type="date" class="form-control" id="acompDataAte" onchange="renderAcompanhamento()">
       </div>
     </div>
   </div>
@@ -1185,12 +1201,16 @@ function renderHistory() {
   const quadra = document.getElementById('filtroQuadra').value.trim().toLowerCase();
   const lote = document.getElementById('filtroLote').value.trim().toLowerCase();
   const pacote = document.getElementById('filtroPacote').value;
+  const dataDe = document.getElementById('filtroDataDe').value;
+  const dataAte = document.getElementById('filtroDataAte').value;
 
   let filtered = registros.filter(r => {
     if (emp && r.empreendimento !== emp) return false;
     if (quadra && r.quadra.toLowerCase() !== quadra) return false;
     if (lote && r.lote.toLowerCase() !== lote) return false;
     if (pacote && r.pacote !== pacote) return false;
+    if (dataDe && r.data < dataDe) return false;
+    if (dataAte && r.data > dataAte) return false;
     return true;
   });
 
@@ -1272,6 +1292,8 @@ function renderAcompanhamento() {
   const emp = document.getElementById('acompEmpreendimento').value;
   const quadraFiltro = document.getElementById('acompQuadra').value.trim().toLowerCase();
   const loteFiltro = document.getElementById('acompLote').value.trim().toLowerCase();
+  const dataDe = document.getElementById('acompDataDe').value;
+  const dataAte = document.getElementById('acompDataAte').value;
   const container = document.getElementById('acompList');
 
   if (!emp) {
@@ -1286,6 +1308,8 @@ function renderAcompanhamento() {
     if (r.empreendimento !== emp) return false;
     if (quadraFiltro && r.quadra.toLowerCase() !== quadraFiltro) return false;
     if (loteFiltro && r.lote.toLowerCase() !== loteFiltro) return false;
+    if (dataDe && r.data < dataDe) return false;
+    if (dataAte && r.data > dataAte) return false;
     return true;
   });
 
