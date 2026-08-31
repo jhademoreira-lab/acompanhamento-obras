@@ -1519,6 +1519,9 @@ function gerarPDF(id) {
 
     let descLines = [];
     let planLines = [];
+    // Set font to match renderSection's content font BEFORE measuring
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
     if (hasDesc) descLines = doc.splitTextToSize(r.descricao, textW);
     if (hasPlan) planLines = doc.splitTextToSize(r.planoAcao, textW);
 
@@ -1665,6 +1668,9 @@ function gerarPDFPacote(empreendimento, pacote) {
   function renderSection(title, text, accentColor) {
     const textInset = 8;
     const textW = contentW - textInset - 4;
+    // Set font to match rendering font BEFORE measuring
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
     const lines = doc.splitTextToSize(text, textW);
     const titleH = 7;
     const textLineH = 5;
