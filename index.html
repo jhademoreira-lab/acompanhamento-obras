@@ -843,6 +843,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
       </div>
     </div>
   </div>
+  <div id="acompBtnGeral" style="display:none; margin-top:12px;">
+    <button class="btn btn-primary" onclick="gerarPDFGeral()" style="width:100%;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      PDF Completo — Todos os Pacotes
+    </button>
+  </div>
   <div id="acompList"></div>
 </div>
 </div>
@@ -1296,11 +1302,14 @@ function renderAcompanhamento() {
   const dataAte = document.getElementById('acompDataAte').value;
   const container = document.getElementById('acompList');
 
+  const btnGeral = document.getElementById('acompBtnGeral');
+
   if (!emp) {
     container.innerHTML = `<div class="empty-state">
       <div class="empty-state-icon">&#128269;</div>
       <div class="empty-state-text">Selecione um empreendimento para ver o acompanhamento</div>
     </div>`;
+    btnGeral.style.display = 'none';
     return;
   }
 
@@ -1318,8 +1327,11 @@ function renderAcompanhamento() {
       <div class="empty-state-icon">&#128203;</div>
       <div class="empty-state-text">Nenhum registro encontrado para esta seleção</div>
     </div>`;
+    btnGeral.style.display = 'none';
     return;
   }
+
+  btnGeral.style.display = 'block';
 
   const statusMap = { conforme: 'Conforme', atencao: 'Atenção', critico: 'Crítico' };
   const badgeMap = { conforme: 'badge-success', atencao: 'badge-warning', critico: 'badge-danger' };
@@ -1432,7 +1444,7 @@ function renderAcompanhamento() {
 }
 
 // ── PDF Generation ──
-function gerarPDF(id) {
+async function gerarPDF(id) {
   const r = registros.find(x => x.id === id);
   if (!r) return;
 
@@ -1454,7 +1466,7 @@ function gerarPDF(id) {
   doc.rect(0, 2, pageW, 24, 'F');
 
   // FGR Logo
-  const logoB64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAACgCAYAAAAisjrVAAATVUlEQVR4nO3de7xd873H8c9J3OKaoILJqWuUoS6RjiqmKVWNinGrotVRL7+6dMwoFcEgbh2Gmarb4KctRvKaTCjTEpcRtJUZ13FLS4O4xD3iEiURkTN/POs0684+5+z97Gfvtfba3/frtV/Ze2c9a/3WOsn6nmetZ63V1dPTgyw1ubs7eoMcMmdOV8paRERa2aC8C2gl9YRHivYiIu1EAZJJtfNXiIhIp+jq9ENYjdrh63CWiBRdR/dAGtlbUE9ERIquYwOkGTt4hYiIFFlHBkgzd+wKEREpqo4LkDx26AoRESmijgqQPHfkChERKZqOCJDJ3d09KXbg9Y6sUoiISJEUPkBS7bR7w0MhIiISFDpAUodHX59rpRARkSIobIA0KjwG+r5aChERaXeFDJBGh0e1fz8QhYiItLPCBUizwqPW6fqiEBGRdlWYe2Gl3BHHhEK9y9e9s0Sk3RSiB5J3eNTTrpd6IiLSbto+QFohPFK1V4iISDtp6wBppfBINR+FiIi0i7YNEO1oRUTy1ZYBkjo8Up/AVi9ERDpBW43CasSOtZGjnzQyS0SKrG16IO0WHinmr56IiLSytgiQdgyPVMtRiIhIq2r5AGnn8Ei1PIWIiLSilg6QIoRHquUqRESk1bRsgBQpPFItXyEiIq2k5UZhNWonmXd4lNLoLBEpgpbqgXRCeIB6IiJSDC0TIJ0SHr0UIiLS7loiQDotPHopRESkneUeINoJ1kfbT0TykttJ9Ebv+Fq991EqxbZop/UVkWLIpQei8Pi0FPWqJyIizdb0AFF4VKYQEZF209QAUXj0TyEiIu2kaQGi8KiOQkRE2kVTAkThURuFiIi0g4aOwmrGTqxo4VFKo7NEpJU1rAei8KifeiIi0soaEiAKj3QUIiLSqpIHiMIjPYWIiLSipAGi8GgchYiItJpkAaLwaDyFiIi0kuXqnYF2SO1ncnd3T6eHcSty9xWALYHtgK2AzwIjgPWAlYEh2esTYBGwAHgbmAe8DDwPPAc8ATxpZh80eRWkw9Q1jLeZ4aEd3lKptnerbFN3PwLwvOsoM9LMnm30Qtx9E2AcMBb4MrBiolkvAR4F7spe95nZwhQzbtDPq4cQih8D8wnB+DrwAvAM8BjwsJm9nXi5UofoHojCIz+HzJnTlWL7qyeSD3dfHvgmcAQwBmjEz2AQsH32OglY6O73Ar8AbjazRQ1YZj26COG5IrAqsD6hF1Zqibv/H3AzcL2ZvdjUCmUZUedAFB75S7VddAiyedx9sLv/LfBHYBLwFRoTHpWsBHwdmAK84u4XuvvmTVp2KoOA0cA5wGx3n9KG61AoNQeIwqN1KETah7tvBzwCXANslG81rA2cANyScx31GAQcCDzu7qe4u/YVOagpQBQerUch0trcfZC7nwE8CGyTdz0FtAJwLjDJ3QfnXUynqSpAJnd39yg8WpdCpDW5+6rATcBEEox4lH4dDFySdxGdZsAAafZOReERRyHSWtx9GPBbYO+8a+kgR7v7uLyL6CT9BojCo70oRFqDu68O3EG4nkOa60IdymqePgNE4dGeFCL5cvdBwA3AF/KupUNtBuyZdxGdomKAKDzam0IkV2cCuyea1yLCRYATgb8BtiaMoFoZGAysAnwm+35PwsiqawjDhDvZwXkX0CmWy3snofBojA652LApV4tXy913Ak5NMKtZwE8JF8vN72e6D7PXW8CTwG0ltawL7AHsTwi0lRLUVa+KPy93XwlYDdiQcNivt+bYf3djIttJjTQyRCSB7Lj7ZdR3YeCfgAnAlWa2uJ56zOx14FrgWncfCnwHMEJvpaVkt1hZCMwFHgKucvddgBsJPaxarefuw83sjYRlSgVNeSZ6X1r4N9tC0KGspjqC+q7zeBrYzswuqzc8ypnZu2Z2qZltQ7jn1m9Szr8RzOx3hBFssf/28r5YsyPkFiAKj+ZIHSIKk2VlJ85PrGMWjwM7NeNwnJndbmZjCIe3Hmn08uphZvcD0yKbD01YivQhlwBReDSXQqTh9gU2iWz7GrBns+8ya2Z3mtm3mrnMSHdEtmuFcz6F1/QAUXjkI/V2V4h8ymF1tD3czF5NVUgBPRfZ7v2kVUhFTQ0QhUe+Umz/0nkoRMDd1wC+Ftn8ZjO7PWU9BRQbBO+mLEIqa1qAKDxaQ+oQEb5OuKFfjIkJ6yiqNSLa9ACzUxciy2pKgGiH01pShoh6Iewc2e5+M3s8aSXFNDKizbNm9k7ySmQZDQ8QhUdrivm5lLdRiACwY2S7G5NWUVwxtyW5J3kVUlFDLyRUeLS2FFer984jpyvWn3FP/ij1GWZWVa8ie4hR+WNXqxU7uqhjuPsY4KsRTX+euBTpQ8N6IAqP9qDDWXVZn/AM71otAP6QuJZCcfddieulzTCzB1LXI5U1pAei8GgvBeiJ5GWDyHazzOyTpJW0MXdfkXAvrI2BUcABwG4Rs1oMHJOwNBmA7oUlVakmFDowRGLu0wQwJ3aB7r4X8OvY9n14xMxGJ55nJY045FjqBDN7opELkE9LfgirQ3YchYPq59Zhh7NWjmw3L2kVAjDRzC7Ou4hOkzRAFB7tLXWIdIDYAFmYtIrO9j5woJmdmXchnShZgHTQTqPQUoZIh/RCYmi71O8TwmirLcxsat7FdKok50AUHsVSvvOP/fn2zqfA/z4WRLbTjf7ivQxcB/zczGLvkyWJ1N0DKfDOoaOpJ1KVDyPbrZm0is6yPDCM+h7cJYnUFSAKj2JTiAxobmS7EUmr6CzDgaOBp939HHfXSNIcaeNLv1r4N9tC0KGspjqC+q7zeBrYzswuqzc8ypnZu2Z2qZltQ7jn1m9Szr8RzOx3hBFssf/28r5YsyPkFiAKj+ZIHSIKk2VlJ85PrGMWjwM7NeNwnJndbmZjCIe3Hmn08uphZvcD0yKbD01YivQhlwBReDSXQqTh9gU2iWz7GrBns+8ya2Z3mtm3mrnMSHdEtmuFcz6F1/QAUXjkI/V2V4h8ymF1tD3czF5NVUgBPRfZ7v2kVUhFTQ0QhUe+Umz/0nkoRMDd1wC+Ftn8ZjO7PWU9BRQbBO+mLEIqa1qAKDxaQ+oQEb5OuKFfjIkJ6yiqNSLa9ACzUxciy2pKgGiH01pShoh6Iewc2e5+M3s8aSXFNDKizbNm9k7ySmQZDQ8QhUdrivm5lLdRiACwY2S7G5NWUVwxtyW5J3kVUlFDLyRUeLS2FFer984jpyvWn3FP/ij1GWZWVa8ie4hR+WNXqxU7uqhjuPsY4KsRTX+euBTpQ8N6IAqP9qDDWXVZn/AM71otAP6QuJZCcfddieulzTCzB1LXI5U1pAei8GgvBeiJ5GWDyHazzOyTpJW0MXdfkXAvrI2BUcABwG4Rs1oMHJOwNBmA7oUlVakmFDowRGLu0wQwJ3aB7r4X8OvY9n14xMxGJ55nJY045FjqBDN7opELkE9LfgirQ3YchYPq59Zhh7NWjmw3L2kVAjDRzC7Ou4hOkzRAFB7tLXWIdIDYAFmYtIrO9j5woJmdmXchnShZgHTQTqPQUoZIh/RCYmi71O8TwmirLcxsat7FdKok50AUHsVSvvOP/fn2zqfA/z4WRLbTjf7ivQxcB/zczGLvkyWJ1N0DKfDOoaOpJ1KVDyPbrZm0is6yPDCM+h7cJYnUFSAKj2JTiAxobmS7EUmr6CzDgaOBp939HHfXSNIcaeNLv1r4N9tC0KGspjqC+q7zeBrYzswuqzc8ypnZu2Z2qZltQ7jn1m9Szr8RzOx3hBFssf/28r5YsyPkFiAKj+ZIHSIKk2VlJ85PrGMWjwM7NeNwnJndbmZjCIe3Hmn08uphZvcD0yKbD01YivQhlwBReDSXQqTh9gU2iWz7GrBns+8ya2Z3mtm3mrnMSHdEtmuFcz6F1/QAUXjkI/V2V4h8ymF1tD3czF5NVUgBPRfZ7v2kVUhFTQ0QhUe+Umz/0nkoRMDd1wC+Ftn8ZjO7PWU9BRQbBO+mLEIqa1qAKDxaQ+oQEb5OuKFfjIkJ6yiqNSLa9ACzUxciy2pKgGiH01pShoh6Iewc2e5+M3s8aSXFNDKizbNm9k7ySmQZDQ8QhUdrivm5lLdRiACwY2S7G5NWUVwxtyW5J3kVUlFDLyRUeLS2FFer984jpyvWn3FP/ij1GWZWVa8ie4hR+WNXqxU7uqhjuPsY4KsRTX+euBTpQ8N6IAqP9qDDWXVZn/AM71otAP6QuJZCcfddieulzTCzB1LXI5U1pAei8GgvBeiJ5GWDyHazzOyTpJW0MXdfkXAvrI2BUcABwG4Rs1oMHJOwNBmA7oUlVakmFDowRGLu0wQwJ3aB7r4X8OvY9n14xMxGJ55nJY045FjqBDN7opELkE9LfgirQ3YchYPq59Zhh7NWjmw3L2kVAjDRzC7Ou4hOkzRAFB7tLXWIdIDYAFmYtIrO9j5woJmdmXchnShZgHTQTqPQUoZIh/RCYmi71O8TwmirLcxsat7FdKok50AUHsVSvvOP/fn2zqfA/z4WRLbTjf7ivQxcB/zczGLvkyWJ1N0DKfDOoaOpJ1KVDyPbrZm0is6yPDCM+h7cJYnUFSAKj2JTiAxobmS7EUmr6CzDgaOBp939HHfXSNIcaeNLv1r4N9tC0KGspjqC+q7zeBrYzswuqzc8ypnZu2Z2qZltQ7jn1m9Szr8RzOx3hBFssf/28r5YsyPkFiAKj+ZIHSIKk2VlJ85PrGMWjwM7NeNwnJndbmZjCIe3Hmn08uphZvcD0yKbD01YivQhlwBReDSXQqTh9gU2iWz7GrBns+8ya2Z3mtm3mrnMSHdEtmuFcz6F1/QAUXjkI/V2V4h8ymF1tD3czF5NVUgBPRfZ7v2kVUhFTQ0QhUe+Umz/0nkoRMDd1wC+Ftn8ZjO7PWU9BRQbBO+mLEIqa1qAKDxaQ+oQEb5OuKFfjIkJ6yiqNSLa9ACzUxciy2pKgGiH01pShoh6Iewc2e5+M3s8aSXFNDKizbNm9k7ySmQZDQ8QhUdrivm5lLdRiACwY2S7G5NWUVwxtyW5J3kVUlFDLyRUeLS2FFer984jpyvWn3FP/ij1GWZWVa8ie4hR+WNXqxU7uqhjuPsY4KsRTX+euBTpQ8N6IAqP9qDDWXVZn/AM71otAP6QuJZCcfddieulzTCzB1LXI5U1pAei8GgvBeiJ5GWDyHazzOyTpJW0MXdfkXAvrI2BUcABwG4Rs1oMHJOwNBmA7oUlVakmFDowRGLu0wQwJ3aB7r4X8OvY9n14xMxGJ55nJY045FjqBDN7opELkE9LfgirQ3YchYPq59Zhh7NWjmw3L2kVAjDRzC7Ou4hOkzRAFB7tLXWIdIDYAFmYtIrO9j5woJmdmXchnShZgHTQTqPQUoZIh/RCYmi71O8TwmirLcxsat7FdKok50AUHsVSvvOP/fn2zqfA/z4WRLbTjf7ivQxcB/zczGLvkyWJ1N0DKfDOoaOpJ1KVDyPbrZm0is6yPDCM+h7cJYnUFSAKj2JTiAxobmS7EUmr6CzDgaOBp939HHfXSNIcaeNLv1r4N9tC0KGspjqC+q7zeBrYzswuqzc8ypnZu2Z2qZltQ7jn1m9Szr8RzOx3hBFssf/28r5YsyPkFiAKj+ZIHSIKk2VlJ85PrGMWjwM7NeNwnJndbmZjCIe3Hmn08uphZvcD0yKbD01YivQhlwBReDSXQqTh9gU2iWz7GrBns+8ya2Z3mtm3mrnMSHdEtmuFcz6F1/QAUXjkI/V2V4h8ymF1tD3czF5NVUgBPRfZ7v2kVUhFTQ0QhUe+Umz/0nkoRMDd1wC+Ftn8ZjO7PWU9BRQbBO+mLEIqa1qAKDxaQ+oQEb5OuKFfjIkJ6yiqNSLa9ACzUxciy2pKgGiH01pShoh6Iewc2e5+M3s8aSXFNDKizbNm9k7ySmQZDQ8QhUdrivm5lLdRiACwY2S7G5NWUVwxtyW5J3kVUlFDLyRUeLS2FFer984jpyvWn3FP/ij1GWZWVa8ie4hR+WNXqxU7uqhjuPsY4KsRTX+euBTpQ8N6IAqP9qDDWXVZn/AM71otAP6QuJZCcfddieulzTCzB1LXI5CYII=';
+  const logoB64 = await gerarLogoFGR();
   try {
     doc.addImage(logoB64, 'PNG', margin, 4, 38, 18);
   } catch(e) {}
@@ -1611,8 +1623,386 @@ function gerarPDF(id) {
   showToast('PDF gerado: ' + filename);
 }
 
+// ── Helper: generate FGR logo as base64 via canvas ──
+// Cache da logo PNG gerada a partir do SVG da página
+let _logoCache = null;
+function gerarLogoFGR() {
+  return new Promise((resolve) => {
+    if (_logoCache) { resolve(_logoCache); return; }
+
+    const svgEl = document.querySelector('.topbar-logo');
+    if (!svgEl) { resolve(''); return; }
+
+    // Clona o SVG com dimensões explícitas para alta resolução
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute('width', '560');
+    clone.setAttribute('height', '200');
+
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 560;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 560, 200);
+      _logoCache = canvas.toDataURL('image/png');
+      resolve(_logoCache);
+    };
+    img.onerror = function() {
+      resolve('');
+    };
+    img.src = svgUrl;
+  });
+}
+
+// ── PDF Completo — Todos os Pacotes (Geral) ──
+async function gerarPDFGeral() {
+  const emp = document.getElementById('acompEmpreendimento').value;
+  const quadraFiltro = document.getElementById('acompQuadra').value.trim().toLowerCase();
+  const loteFiltro = document.getElementById('acompLote').value.trim().toLowerCase();
+  const dataDe = document.getElementById('acompDataDe').value;
+  const dataAte = document.getElementById('acompDataAte').value;
+
+  if (!emp) { showToast('Selecione um empreendimento.'); return; }
+
+  let filtered = registros.filter(r => {
+    if (r.empreendimento !== emp) return false;
+    if (quadraFiltro && r.quadra.toLowerCase() !== quadraFiltro) return false;
+    if (loteFiltro && r.lote.toLowerCase() !== loteFiltro) return false;
+    if (dataDe && r.data < dataDe) return false;
+    if (dataAte && r.data > dataAte) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) { showToast('Nenhum registro encontrado.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  const statusLabels = { conforme: 'CONFORME', atencao: 'ATENÇÃO', critico: 'CRÍTICO' };
+  const statusColors = { conforme: [46,125,50], atencao: [239,108,0], critico: [198,40,40] };
+
+  const logoB64 = await gerarLogoFGR();
+
+  function checkPage(needed) {
+    if (y + needed > pageH - 20) { doc.addPage(); y = margin; return true; }
+    return false;
+  }
+
+  function renderHeader() {
+    doc.setFillColor(165, 28, 28);
+    doc.rect(0, 0, pageW, 2, 'F');
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 2, pageW, 24, 'F');
+    try { doc.addImage(logoB64, 'PNG', margin, 4, 38, 18); } catch(e) {}
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(165, 28, 28);
+    doc.text('Acompanhamento de Obras', pageW - margin, 16, { align: 'right' });
+    doc.setDrawColor(165, 28, 28);
+    doc.setLineWidth(0.5);
+    doc.line(0, 26, pageW, 26);
+  }
+
+  function addField(label, value, x, yPos) {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(130, 130, 130);
+    doc.setFontSize(8);
+    doc.text(label.toUpperCase(), x, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(11);
+    doc.text(String(value || '—'), x, yPos + 5.5);
+  }
+
+  function renderSection(title, text, accentColor) {
+    const textInset = 8;
+    const textW = contentW - textInset - 4;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    const lines = doc.splitTextToSize(text, textW);
+    const titleH = 7;
+    const textLineH = 5;
+    const padding = 5;
+    const boxH = titleH + lines.length * textLineH + padding * 2;
+
+    checkPage(boxH);
+
+    doc.setFillColor(250, 248, 248);
+    doc.roundedRect(margin, y, contentW, boxH, 1.5, 1.5, 'F');
+    doc.setFillColor(...accentColor);
+    doc.roundedRect(margin, y, 2.5, boxH, 1.5, 0, 'F');
+    doc.rect(margin + 1.2, y, 1.3, boxH, 'F');
+
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(...accentColor);
+    doc.text(title, margin + textInset, y + padding + 3);
+
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(10);
+    lines.forEach((line, i) => {
+      const ly = y + padding + titleH + i * textLineH + 2;
+      doc.text(line, margin + textInset, ly);
+    });
+
+    y += boxH + 4;
+  }
+
+  // Group by pacote, then by casa
+  const byPacote = {};
+  filtered.forEach(r => {
+    if (!byPacote[r.pacote]) byPacote[r.pacote] = [];
+    byPacote[r.pacote].push(r);
+  });
+
+  const sortedPacotes = Object.keys(byPacote).sort((a, b) => {
+    const na = parseInt(a); const nb = parseInt(b);
+    return na - nb;
+  });
+
+  // ── COVER PAGE ──
+  renderHeader();
+  y = 45;
+
+  doc.setFontSize(18);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(165, 28, 28);
+  doc.text('Relatório Geral — Todos os Pacotes', margin, y);
+  y += 10;
+
+  doc.setFontSize(13);
+  doc.setTextColor(40, 40, 40);
+  doc.text(emp, margin, y);
+  y += 8;
+
+  if (dataDe || dataAte) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(80, 80, 80);
+    let periodo = 'Período: ';
+    if (dataDe) periodo += formatDate(dataDe);
+    else periodo += '...';
+    periodo += ' a ';
+    if (dataAte) periodo += formatDate(dataAte);
+    else periodo += '...';
+    doc.text(periodo, margin, y);
+    y += 8;
+  }
+
+  doc.setFontSize(10);
+  doc.setTextColor(80, 80, 80);
+  doc.text('Pacotes: ' + sortedPacotes.length + '    |    Total de registros: ' + filtered.length, margin, y);
+  y += 10;
+
+  // Summary per pacote
+  sortedPacotes.forEach(pacote => {
+    const recs = byPacote[pacote];
+    const casas = {};
+    recs.forEach(r => {
+      const key = r.quadra + '|' + r.lote;
+      if (!casas[key]) casas[key] = [];
+      casas[key].push(r);
+    });
+    Object.values(casas).forEach(arr => arr.sort((a, b) => (b.data || '').localeCompare(a.data || '')));
+
+    let cc = 0, ca = 0, cr = 0;
+    Object.values(casas).forEach(arr => {
+      const s = arr[0].situacao;
+      if (s === 'conforme') cc++;
+      else if (s === 'atencao') ca++;
+      else if (s === 'critico') cr++;
+    });
+
+    checkPage(12);
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text(pacote, margin, y);
+
+    let summaryParts = [];
+    if (cc > 0) summaryParts.push(cc + ' Conforme');
+    if (ca > 0) summaryParts.push(ca + ' Atenção');
+    if (cr > 0) summaryParts.push(cr + ' Crítico');
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(Object.keys(casas).length + ' casa(s) · ' + recs.length + ' registro(s) · ' + summaryParts.join(', '), margin + 80, y);
+    y += 6;
+  });
+
+  y += 4;
+  doc.setFontSize(8);
+  doc.setTextColor(160, 160, 160);
+  doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR'), margin, y);
+
+  // ── DETAIL PAGES — one section per pacote → per casa ──
+  sortedPacotes.forEach(pacote => {
+    const recs = byPacote[pacote];
+    const casas = {};
+    recs.forEach(r => {
+      const key = r.quadra + '|' + r.lote;
+      if (!casas[key]) casas[key] = [];
+      casas[key].push(r);
+    });
+    Object.values(casas).forEach(arr => arr.sort((a, b) => (b.data || '').localeCompare(a.data || '')));
+
+    const casaKeys = Object.keys(casas).sort((a, b) => {
+      const [qa, la] = a.split('|');
+      const [qb, lb] = b.split('|');
+      return qa.localeCompare(qb, undefined, {numeric: true}) || la.localeCompare(lb, undefined, {numeric: true});
+    });
+
+    // Pacote separator page
+    doc.addPage();
+    renderHeader();
+    y = 45;
+
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(165, 28, 28);
+    doc.text(pacote, margin, y);
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(emp + '  ·  ' + casaKeys.length + ' casa(s)  ·  ' + recs.length + ' registro(s)', margin, y);
+    y += 12;
+
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(margin, y, pageW - margin, y);
+    y += 8;
+
+    // Each casa in this pacote
+    casaKeys.forEach((casaKey, casaIdx) => {
+      const [quadra, lote] = casaKey.split('|');
+      const casaRecs = casas[casaKey];
+
+      if (casaIdx > 0) {
+        // Separator between casas
+        checkPage(20);
+        y += 4;
+        doc.setDrawColor(165, 28, 28);
+        doc.setLineWidth(0.4);
+        doc.line(margin, y, pageW - margin, y);
+        y += 8;
+      }
+
+      checkPage(30);
+      doc.setFontSize(12);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(165, 28, 28);
+      doc.text('Quadra ' + quadra + ' — Lote ' + lote, margin, y);
+      y += 5;
+
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(casaRecs.length + ' registro(s)', margin, y);
+      y += 8;
+
+      casaRecs.forEach((r, rIdx) => {
+        checkPage(40);
+
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(40, 40, 40);
+        doc.text('Registro ' + (rIdx + 1) + '  —  ' + formatDate(r.data), margin, y);
+
+        if (r.situacao) {
+          const sc = statusColors[r.situacao] || [100,100,100];
+          const sl = statusLabels[r.situacao] || '—';
+          const labelW = doc.getTextWidth(sl) + 6;
+          const bx2 = margin + doc.getTextWidth('Registro ' + (rIdx + 1) + '  —  ' + formatDate(r.data)) + 6;
+          doc.setFillColor(...sc);
+          doc.roundedRect(bx2, y - 4.5, labelW, 6.5, 1.5, 1.5, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.setFont(undefined, 'bold');
+          doc.text(sl, bx2 + labelW / 2, y - 0.5, { align: 'center' });
+        }
+
+        y += 8;
+
+        if (r.descricao) {
+          renderSection('DESCRIÇÃO', r.descricao, [100, 100, 100]);
+        }
+        if (r.planoAcao) {
+          renderSection('PLANO DE AÇÃO', r.planoAcao, [165, 28, 28]);
+        }
+
+        // Photos
+        const fotos = r.fotos || [];
+        if (fotos.length > 0) {
+          checkPage(30);
+          doc.setTextColor(130, 130, 130);
+          doc.setFontSize(8);
+          doc.setFont(undefined, 'bold');
+          doc.text('REGISTRO FOTOGRÁFICO', margin, y);
+          y += 6;
+
+          const photoW = (contentW - 6) / 2;
+          const photoH = 55;
+          let px = margin;
+          fotos.forEach((foto, fi) => {
+            if (y + photoH > pageH - 20) { doc.addPage(); renderHeader(); y = 33; px = margin; }
+            try { doc.addImage(foto, 'JPEG', px, y, photoW, photoH); } catch(e) {}
+            if (fi % 2 === 0) { px = margin + photoW + 6; }
+            else { px = margin; y += photoH + 6; }
+          });
+          if (fotos.length % 2 !== 0) y += photoH + 6;
+        }
+
+        if (rIdx < casaRecs.length - 1) {
+          y += 4;
+          checkPage(6);
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.2);
+          doc.setLineDashPattern([2, 2], 0);
+          doc.line(margin + 10, y, pageW - margin - 10, y);
+          doc.setLineDashPattern([], 0);
+          y += 8;
+        }
+      });
+    });
+  });
+
+  // Footer on all pages
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(165, 28, 28);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageH - 14, pageW - margin, pageH - 14);
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text('FGR Incorporações — Acompanhamento de Obras', margin, pageH - 9);
+    doc.text('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Página ' + i + '/' + totalPages, pageW - margin, pageH - 9, { align: 'right' });
+  }
+
+  let filename = 'Acompanhamento_' + emp.replace(/\s/g,'_') + '_Geral';
+  if (dataDe) filename += '_' + dataDe;
+  if (dataAte) filename += '_' + dataAte;
+  filename += '.pdf';
+  doc.save(filename);
+  showToast('PDF geral gerado: ' + filename);
+}
+
 // ── PDF Completo por Pacote ──
-function gerarPDFPacote(empreendimento, pacote) {
+async function gerarPDFPacote(empreendimento, pacote) {
   const filtered = registros.filter(r => r.empreendimento === empreendimento && r.pacote === pacote);
   if (filtered.length === 0) { showToast('Nenhum registro encontrado para este pacote.'); return; }
 
@@ -1628,7 +2018,7 @@ function gerarPDFPacote(empreendimento, pacote) {
   const statusLabels = { conforme: 'CONFORME', atencao: 'ATENÇÃO', critico: 'CRÍTICO' };
   const statusColors = { conforme: [46,125,50], atencao: [239,108,0], critico: [198,40,40] };
 
-  const logoB64 = 'data:image/png;base64,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';
+  const logoB64 = await gerarLogoFGR();
 
   // ── Helper: check page space, add page if needed ──
   function checkPage(needed) {
