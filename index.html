@@ -1152,10 +1152,12 @@ function salvarRegistro() {
     return;
   }
 
+  // Se estiver editando, a data é atualizada para hoje (última atualização)
+  const hoje = new Date().toISOString().slice(0, 10);
   const registro = {
     id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     empreendimento: emp,
-    data,
+    data: editingId ? hoje : data,
     quadra,
     lote,
     pacote,
@@ -1163,7 +1165,8 @@ function salvarRegistro() {
     descricao,
     planoAcao: plano,
     fotos: [...currentPhotos],
-    criadoEm: editingId ? registros.find(r => r.id === editingId)?.criadoEm || new Date().toISOString() : new Date().toISOString()
+    criadoEm: editingId ? registros.find(r => r.id === editingId)?.criadoEm || new Date().toISOString() : new Date().toISOString(),
+    atualizadoEm: editingId ? new Date().toISOString() : null
   };
 
   if (editingId) {
@@ -1235,12 +1238,13 @@ function renderHistory() {
                       r.situacao === 'critico' ? '&#10007;' : '&#8212;';
 
     const dataFormatada = formatDate(r.data);
+    const atualizadoTag = r.atualizadoEm ? ' <span style="color:var(--text-muted);font-size:11px;">(atualizado)</span>' : '';
 
     return `<div class="history-item">
       <div class="history-header">
         <div>
           <div class="history-meta"><strong>${r.empreendimento}</strong> — Quadra ${r.quadra}, Lote ${r.lote}</div>
-          <div class="history-meta">${dataFormatada} · ${r.pacote}</div>
+          <div class="history-meta">${dataFormatada}${atualizadoTag} · ${r.pacote}</div>
         </div>
         <span class="badge ${badgeClass}">${badgeIcon} ${badgeLabel}</span>
       </div>
@@ -1394,7 +1398,7 @@ function renderAcompanhamento() {
           <span class="badge ${bClass}">${statusLabel}</span>
         </div>
         <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-          Último: ${formatDate(ultimo.data)} · ${sorted.length} registro(s)
+          Último: ${formatDate(ultimo.data)}${ultimo.atualizadoEm ? ' <span style="font-size:10px;">(atualizado)</span>' : ''} · ${sorted.length} registro(s)
         </div>`;
 
       if (ultimo.descricao) {
@@ -1410,7 +1414,7 @@ function renderAcompanhamento() {
         sorted.forEach(r => {
           const bc = badgeMap[r.situacao] || 'badge-info';
           html += `<div style="margin-bottom:10px;">
-            <div style="font-size:12px; font-weight:500;">${formatDate(r.data)}
+            <div style="font-size:12px; font-weight:500;">${formatDate(r.data)}${r.atualizadoEm ? ' <span style="color:var(--text-muted);font-size:10px;">(atualizado)</span>' : ''}
               ${r.situacao ? `<span class="badge ${bc}" style="margin-left:4px; font-size:10px;">${statusMap[r.situacao] || '—'}</span>` : ''}
             </div>
             ${r.descricao ? `<div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">${escapeHtml(r.descricao).substring(0, 120)}${r.descricao.length > 120 ? '...' : ''}</div>` : ''}
@@ -1487,7 +1491,7 @@ function gerarPDF(id) {
   }
 
   addField('Empreendimento', r.empreendimento, margin, y);
-  addField('Data', formatDate(r.data), margin + 90, y);
+  addField('Data', formatDate(r.data) + (r.atualizadoEm ? ' (atualizado)' : ''), margin + 90, y);
   y += 15;
   addField('Casa', `Quadra ${r.quadra} — Lote ${r.lote}`, margin, y);
   addField('Pacote', r.pacote, margin + 90, y);
