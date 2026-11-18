@@ -1,15 +1,12 @@
-const CACHE = 'fgr-obras-v1';
+const CACHE = 'fgr-obras-v2';
 const CDN = [
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js'
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
-    await Promise.allSettled(['./'].map(u => c.add(u)));
+    await Promise.allSettled(['./', './supabase.js'].map(u => c.add(u)));
     await Promise.allSettled(CDN.map(async u => {
       const r = await fetch(new Request(u, { mode: 'no-cors' }));
       await c.put(u, r);
