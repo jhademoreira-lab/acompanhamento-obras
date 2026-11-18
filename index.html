@@ -714,6 +714,12 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     <div class="auth-field"><input type="email" id="authEmail" class="form-control" placeholder="E-mail" autocomplete="email" onkeydown="if(event.key==='Enter') authSubmit()"></div>
     <div class="auth-field"><input type="password" id="authSenha" class="form-control" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter') authSubmit()"></div>
     <div class="auth-field" id="authSenha2Wrap" style="display:none;"><input type="password" id="authSenha2" class="form-control" placeholder="Confirmar senha" autocomplete="new-password" onkeydown="if(event.key==='Enter') authSubmit()"></div>
+    <div id="novaSenhaBox" style="display:none;">
+      <p style="font-size:13px;color:var(--text-secondary);margin:4px 0 6px;">Defina sua nova senha. Ela vale para a sua conta do Hydra, inclusive em outros apps do Hydra.</p>
+      <div class="auth-field"><input type="password" id="novaSenha" class="form-control" placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password"></div>
+      <div class="auth-field"><input type="password" id="novaSenha2" class="form-control" placeholder="Confirmar nova senha" autocomplete="new-password" onkeydown="if(event.key==='Enter') salvarNovaSenha()"></div>
+      <button class="btn btn-primary" id="novaSenhaBtn" onclick="salvarNovaSenha()" style="margin-top:12px; min-width:200px; justify-content:center;">Salvar nova senha</button>
+    </div>
     <div class="setup-error" id="authError"></div>
     <div class="auth-info" id="authInfo"></div>
     <button class="btn btn-primary" id="authSubmitBtn" onclick="authSubmit()" style="margin-top:12px; min-width:200px; justify-content:center;">Entrar</button>
@@ -1507,6 +1513,7 @@ let tratandoUid = null;
 async function tratarSessao(session) {
   const user = session && session.user;
   if (!user) { if (!appStarted) { currentUser = null; mostrarLogin(); } return; }
+  if (definindoSenha) return;
   if (currentUser && currentUser.uid === user.id) return;
   if (tratandoUid === user.id) return;
   tratandoUid = user.id;
@@ -1567,6 +1574,62 @@ async function tratarSessao(session) {
   }
 }
 
+// ── Nova senha por link gerado pelo administrador (?token_hash=...&type=recovery) ──
+let definindoSenha = false;
+let recuperacaoVerificada = false;
+const RECUP = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    return q.get('type') === 'recovery' && q.get('token_hash') ? q.get('token_hash') : null;
+  } catch (_) { return null; }
+})();
+
+function mostrarNovaSenha() {
+  definindoSenha = true;
+  mostrarLogin();
+  const abas = document.querySelector('.auth-tabs');
+  if (abas) abas.style.display = 'none';
+  ['authNomeWrap', 'authSenha2Wrap'].forEach(i => { el(i).style.display = 'none'; });
+  [el('authEmail').parentNode, el('authSenha').parentNode, el('authSubmitBtn'), el('authDica')].forEach(x => { if (x) x.style.display = 'none'; });
+  el('novaSenhaBox').style.display = 'block';
+}
+
+function voltarAoLogin() {
+  const abas = document.querySelector('.auth-tabs');
+  if (abas) abas.style.display = '';
+  [el('authEmail').parentNode, el('authSenha').parentNode, el('authSubmitBtn'), el('authDica')].forEach(x => { if (x) x.style.display = ''; });
+  el('novaSenhaBox').style.display = 'none';
+}
+
+async function salvarNovaSenha() {
+  const s1 = el('novaSenha').value, s2 = el('novaSenha2').value;
+  if (s1.length < 6) { authMsg('A senha precisa ter pelo menos 6 caracteres.', ''); return; }
+  if (s1 !== s2) { authMsg('As senhas não conferem.', ''); return; }
+  authMsg('', '');
+  el('novaSenhaBtn').disabled = true;
+  try {
+    if (!recuperacaoVerificada) {
+      const { error } = await sb.auth.verifyOtp({ token_hash: RECUP, type: 'recovery' });
+      if (error) {
+        const m = error.message || '';
+        throw new Error(/expired|invalid|otp|token/i.test(m) ? 'Link inválido ou expirado. Peça um novo ao administrador.' : m);
+      }
+      recuperacaoVerificada = true;
+    }
+    const { error: e2 } = await sb.auth.updateUser({ password: s1 });
+    if (e2) throw e2;
+    history.replaceState(null, '', location.pathname);
+    definindoSenha = false;
+    voltarAoLogin();
+    showToast('Senha alterada com sucesso!');
+    const { data } = await sb.auth.getSession();
+    tratarSessao(data && data.session);
+  } catch (e) {
+    authMsg(/Link inválido/.test(e.message || '') ? e.message : authErroTexto(e), '');
+  }
+  el('novaSenhaBtn').disabled = false;
+}
+
 if (sb) {
   // Erro devolvido pela Microsoft/Hydra no retorno do login
   try {
@@ -1578,6 +1641,7 @@ if (sb) {
     }
   } catch (_) {}
   sb.auth.onAuthStateChange((event, session) => { setTimeout(() => tratarSessao(session), 0); });
+  if (RECUP) mostrarNovaSenha();
 } else {
   mostrarLogin();
   authMsg('Não foi possível carregar o app. Verifique a conexão com a rede FGR (ou VPN) e abra novamente.', '');
